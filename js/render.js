@@ -1,21 +1,39 @@
 function renderDashboard() {
-  const openIncidents = incidents.filter((incident) => !["Closed", "False Positive"].includes(incident.status)).length;
-  const highCritical = incidents.filter((incident) => ["High", "Critical"].includes(incident.severity)).length;
-  const openActions = actions.filter((action) => action.status !== "Done" && action.status !== "Cancelled").length;
-  const mappedIncidents = new Set(attackMappings.map((mapping) => mapping.incidentId)).size;
+  const role = currentRole();
+  const allowedCards = dashboardCards.filter((card) => canViewDashboardCard(card, role));
+  const visibleCardIds = new Set(visibleDashboardCardIds(role));
+  const visibleCards = allowedCards.filter((card) => visibleCardIds.has(card.id));
+  const customization = allowedCards.map((card) => `
+    <label class="dashboard-toggle">
+      <input type="checkbox" data-dashboard-card="${escapeHtml(card.id)}" ${visibleCardIds.has(card.id) ? "checked" : ""}>
+      <span>${escapeHtml(card.title)}</span>
+    </label>
+  `).join("");
+  const visible = visibleIncidents();
+  const mappedIncidents = new Set(visibleLinkedRecords(attackMappings).map((mapping) => mapping.incidentId)).size;
 
   document.getElementById("dashboard").innerHTML = `
-    ${sectionHeader("Dashboard", "Current fictional incident response activity for the local prototype.")}
+    ${sectionHeader("Dashboard", `Current fictional incident response activity for ${escapeHtml(role)} demo view.`)}
     ${storageNotice ? `<div class="notice warning">${escapeHtml(storageNotice)}</div>` : ""}
     <div class="toolbar">
-      <button class="secondary-button" type="button" id="resetDemoData">Reset Demo Data</button>
-      <button class="primary-button" type="button" id="createIncident">Create Incident</button>
+      <button class="secondary-button" type="button" id="customizeDashboard">Customize Dashboard</button>
+      <button class="secondary-button" type="button" id="resetDashboardLayout">Reset Dashboard Layout</button>
+      ${canCreateIncident() ? `<button class="primary-button" type="button" id="createIncident">Create Incident</button>` : ""}
+      ${currentRole() === "Admin" ? `<button class="secondary-button" type="button" id="resetDemoData">Reset Demo Data</button>` : ""}
+    </div>
+    <div class="card dashboard-customizer" id="dashboardCustomizer" hidden>
+      <h3>Customize Dashboard</h3>
+      <p>Show or hide cards available to the current demo role.</p>
+      <div class="dashboard-toggle-grid">${customization || emptyState("No dashboard cards available for this role.")}</div>
     </div>
     <div class="grid metrics">
-      <div class="card metric"><div class="label">Total incidents</div><div class="value">${incidents.length}</div></div>
-      <div class="card metric"><div class="label">Open incidents</div><div class="value">${openIncidents}</div></div>
-      <div class="card metric"><div class="label">High / Critical</div><div class="value">${highCritical}</div></div>
-      <div class="card metric"><div class="label">Open actions</div><div class="value">${openActions}</div></div>
+      ${visibleCards.map((card) => `
+        <div class="card metric card-${escapeHtml(card.style)}">
+          <div class="label">${escapeHtml(card.title)}</div>
+          <div class="value">${escapeHtml(card.value())}</div>
+          <p>${escapeHtml(card.description)}</p>
+        </div>
+      `).join("") || emptyState("No dashboard cards selected. Use Customize Dashboard to enable cards.")}
     </div>
     <div class="grid two-col">
       <div>
@@ -23,17 +41,18 @@ function renderDashboard() {
       </div>
       <div class="card">
         <h3>Prototype Coverage</h3>
-        <p>${mappedIncidents} incidents have documented ATT&amp;CK mappings. ${incidents.length - mappedIncidents} incident has no mapping documented yet.</p>
-        <p class="notice">All records on this page are fictional sample data. Role switching is visual demo behavior only and is not authentication.</p>
+        <p>${mappedIncidents} visible incidents have documented ATT&amp;CK mappings. ${Math.max(visible.length - mappedIncidents, 0)} visible incident(s) have no mapping documented yet.</p>
+        <p class="notice">All records are fictional. Role switching is frontend demo behavior only, not real authentication or production RBAC.</p>
       </div>
     </div>
   `;
 }
 
 function renderIncidentTable(includeActions = false) {
+  const visible = visibleIncidents();
   return table(
     includeActions ? ["ID", "Title", "Severity", "Status", "Owner", "Detection Source", "Actions"] : ["ID", "Title", "Severity", "Status", "Owner", "Detection Source"],
-    incidents.map((incident) => {
+    visible.map((incident) => {
       const cells = [
         escapeHtml(incident.id),
         escapeHtml(incident.title),
@@ -45,12 +64,12 @@ function renderIncidentTable(includeActions = false) {
 
       if (includeActions) {
         cells.push(`
-          <button class="table-action" type="button" data-edit-incident="${escapeHtml(incident.id)}">Edit</button>
-          <button class="table-action danger-button" type="button" data-delete-incident="${escapeHtml(incident.id)}">Delete</button>
+          ${canEditIncident(incident) ? `<button class="table-action" type="button" data-edit-incident="${escapeHtml(incident.id)}">Edit</button>` : ""}
+          ${canDeleteIncident(incident) ? `<button class="table-action danger-button" type="button" data-delete-incident="${escapeHtml(incident.id)}">Delete</button>` : ""}
         `);
       }
 
-      return row(cells, `class="clickable-row" tabindex="0" data-select-incident="${escapeHtml(incident.id)}"`);
+      return row(cells, `class="clickable-row ${escapeHtml(severityClass(incident.severity))}" tabindex="0" data-select-incident="${escapeHtml(incident.id)}"`);
     })
   );
 }
@@ -66,8 +85,7 @@ function renderIncidents() {
     ${sectionHeader("Incidents", "Fictional sample incidents with internal response terminology.")}
     ${storageNotice ? `<div class="notice warning">${escapeHtml(storageNotice)}</div>` : ""}
     <div class="toolbar">
-      <button class="secondary-button" type="button" id="resetDemoData">Reset Demo Data</button>
-      <button class="primary-button" type="button" id="createIncident">Create Incident</button>
+      ${canCreateIncident() ? `<button class="primary-button" type="button" id="createIncident">Create Incident</button>` : ""}
     </div>
     ${renderIncidentTable(true)}
   `;
@@ -85,8 +103,8 @@ function renderIncidentDetail(incident) {
         </div>
         <div>
           <button class="secondary-button" type="button" data-back-list="incidents">Back to Incidents</button>
-          <button class="table-action" type="button" data-edit-incident="${escapeHtml(incident.id)}">Edit</button>
-          <button class="table-action danger-button" type="button" data-delete-incident="${escapeHtml(incident.id)}">Delete</button>
+          ${canEditIncident(incident) ? `<button class="table-action" type="button" data-edit-incident="${escapeHtml(incident.id)}">Edit</button>` : ""}
+          ${canDeleteIncident(incident) ? `<button class="table-action danger-button" type="button" data-delete-incident="${escapeHtml(incident.id)}">Delete</button>` : ""}
         </div>
       </div>
       <div class="detail-grid">
@@ -143,7 +161,7 @@ function renderIncidentDetail(incident) {
       <div class="detail-section">
         <h4>ATT&CK Mappings</h4>
         ${smallTable(["ID", "Tactic", "Technique", "Status"], links.attackMappings.map((item) => row([
-          escapeHtml(item.id), escapeHtml(item.tactic), escapeHtml(item.technique), escapeHtml(item.status)
+          escapeHtml(item.id), mitreAttackLink(item.tactic, "tactic"), mitreAttackLink(item.technique, "technique"), attackStatusLabel(item)
         ])), "No ATT&CK mapping documented.")}
       </div>
     </div>
@@ -151,6 +169,10 @@ function renderIncidentDetail(incident) {
 }
 
 function renderArtifacts() {
+  if (!canViewSection("artifacts")) {
+    document.getElementById("artifacts").innerHTML = restrictedMessage("Evidence / Artifacts");
+    return;
+  }
   const selectedArtifact = artifacts.find((item) => item.id === selectedState.artifactId);
   if (selectedArtifact) {
     document.getElementById("artifacts").innerHTML = renderArtifactDetail(selectedArtifact);
@@ -159,7 +181,7 @@ function renderArtifacts() {
 
   document.getElementById("artifacts").innerHTML = `
     ${sectionHeader("Evidence / Artifacts", "Internal incident artifacts such as alerts, tickets, headers, screenshots, and references.")}
-    ${table(["ID", "Incident", "Type", "Source Tool", "Description", "Collected By"], artifacts.map((item) => row([
+    ${table(["ID", "Incident", "Type", "Source Tool", "Description", "Collected By"], visibleLinkedRecords(artifacts).map((item) => row([
       escapeHtml(item.id), escapeHtml(item.incidentId), escapeHtml(item.type), escapeHtml(item.source), escapeHtml(item.description), escapeHtml(item.collectedBy)
     ], `class="clickable-row" tabindex="0" data-select-artifact="${escapeHtml(item.id)}"`)))}
   `;
@@ -188,33 +210,49 @@ function renderArtifactDetail(item) {
 }
 
 function renderIndicators() {
+  if (!canViewSection("indicators")) {
+    document.getElementById("indicators").innerHTML = restrictedMessage("Indicators");
+    return;
+  }
   document.getElementById("indicators").innerHTML = `
     ${sectionHeader("Indicators", "Demo observables and indicators connected to fictional incidents.")}
-    ${table(["ID", "Incident", "Type", "Value", "Confidence", "Status"], indicators.map((item) => row([
+    ${table(["ID", "Incident", "Type", "Value", "Confidence", "Status"], visibleLinkedRecords(indicators).map((item) => row([
       escapeHtml(item.id), escapeHtml(item.incidentId), escapeHtml(item.type), escapeHtml(item.value), pill(item.confidence), escapeHtml(item.status)
     ])))}
   `;
 }
 
 function renderAssets() {
+  if (!canViewSection("assets")) {
+    document.getElementById("assets").innerHTML = restrictedMessage("Assets");
+    return;
+  }
   document.getElementById("assets").innerHTML = `
     ${sectionHeader("Assets", "Fictional affected systems, devices, resources, and applications.")}
-    ${table(["ID", "Incident", "Hostname", "Type", "Owner", "Criticality", "Status"], assets.map((item) => row([
+    ${table(["ID", "Incident", "Hostname", "Type", "Owner", "Criticality", "Status"], visibleLinkedRecords(assets).map((item) => row([
       escapeHtml(item.id), escapeHtml(item.incidentId), escapeHtml(item.hostname), escapeHtml(item.type), escapeHtml(item.owner), pill(item.criticality), escapeHtml(item.status)
     ])))}
   `;
 }
 
 function renderEntities() {
+  if (!canViewSection("entities")) {
+    document.getElementById("entities").innerHTML = restrictedMessage("Entities");
+    return;
+  }
   document.getElementById("entities").innerHTML = `
     ${sectionHeader("Entities", "Fictional users, senders, service accounts, and related entities.")}
-    ${table(["ID", "Incident", "Name / Identifier", "Type", "Role", "Department"], entities.map((item) => row([
+    ${table(["ID", "Incident", "Name / Identifier", "Type", "Role", "Department"], visibleLinkedRecords(entities).map((item) => row([
       escapeHtml(item.id), escapeHtml(item.incidentId), escapeHtml(item.name), escapeHtml(item.type), escapeHtml(item.role), escapeHtml(item.department)
     ])))}
   `;
 }
 
 function renderTimeline() {
+  if (!canViewSection("timeline")) {
+    document.getElementById("timeline").innerHTML = restrictedMessage("Timeline");
+    return;
+  }
   const selectedEvent = timeline.find((item) => item.id === selectedState.timelineId);
   if (selectedEvent) {
     document.getElementById("timeline").innerHTML = renderTimelineDetail(selectedEvent);
@@ -223,7 +261,7 @@ function renderTimeline() {
 
   document.getElementById("timeline").innerHTML = `
     ${sectionHeader("Timeline", "Chronological incident activity reconstructed from documented fictional data.")}
-    ${table(["ID", "Incident", "Timestamp", "Type", "Description", "Source"], timeline.map((item) => row([
+    ${table(["ID", "Incident", "Timestamp", "Type", "Description", "Source"], visibleLinkedRecords(timeline).map((item) => row([
       escapeHtml(item.id), escapeHtml(item.incidentId), escapeHtml(item.timestamp), escapeHtml(item.type), escapeHtml(item.description), escapeHtml(item.source)
     ], `class="clickable-row" tabindex="0" data-select-timeline="${escapeHtml(item.id)}"`)))}
   `;
@@ -252,6 +290,10 @@ function renderTimelineDetail(item) {
 }
 
 function renderActions() {
+  if (!canViewSection("actions")) {
+    document.getElementById("actions").innerHTML = restrictedMessage("Response Actions");
+    return;
+  }
   const selectedAction = actions.find((item) => item.id === selectedState.actionId);
   if (selectedAction) {
     document.getElementById("actions").innerHTML = renderActionDetail(selectedAction);
@@ -260,7 +302,7 @@ function renderActions() {
 
   document.getElementById("actions").innerHTML = `
     ${sectionHeader("Response Actions", "Tracked work items for containment, eradication, recovery, and follow-up.")}
-    ${table(["ID", "Incident", "Title", "Owner", "Priority", "Status", "Due"], actions.map((item) => row([
+    ${table(["ID", "Incident", "Title", "Owner", "Priority", "Status", "Due"], visibleLinkedRecords(actions).map((item) => row([
       escapeHtml(item.id), escapeHtml(item.incidentId), escapeHtml(item.title), escapeHtml(item.owner), pill(item.priority), pill(item.status), escapeHtml(item.due)
     ], `class="clickable-row" tabindex="0" data-select-action="${escapeHtml(item.id)}"`)))}
   `;
@@ -293,18 +335,26 @@ function renderActionDetail(item) {
 }
 
 function renderAttack() {
+  if (!canViewSection("attack")) {
+    document.getElementById("attack").innerHTML = restrictedMessage("ATT&CK Mapping");
+    return;
+  }
   document.getElementById("attack").innerHTML = `
     ${sectionHeader("ATT&CK Mapping", "Educational demo mappings. Mappings are documented manually and do not fetch live MITRE data.")}
-    ${table(["ID", "Incident", "Tactic", "Technique", "Confidence", "Status", "Related Artifact", "Notes"], attackMappings.map((item) => row([
-      escapeHtml(item.id), escapeHtml(item.incidentId), escapeHtml(item.tactic), escapeHtml(item.technique), pill(item.confidence), escapeHtml(item.status), escapeHtml(item.relatedArtifact), escapeHtml(item.notes)
+    ${table(["ID", "Incident", "Tactic", "Technique", "Confidence", "Status", "Related Artifact", "Notes"], visibleLinkedRecords(attackMappings).map((item) => row([
+      escapeHtml(item.id), escapeHtml(item.incidentId), mitreAttackLink(item.tactic, "tactic"), mitreAttackLink(item.technique, "technique"), pill(item.confidence), attackStatusLabel(item), escapeHtml(item.relatedArtifact), escapeHtml(item.notes)
     ])))}
   `;
 }
 
 function renderConnectors() {
+  if (!canViewSection("connectors")) {
+    document.getElementById("connectors").innerHTML = restrictedMessage("Connectors");
+    return;
+  }
   document.getElementById("connectors").innerHTML = `
     ${sectionHeader("Connectors", "Mock connector cards only. No real APIs are called and no credentials are used.")}
-    <p class="notice">Real API integrations require a backend service, secure secrets storage, and security review. Do not store API keys in this frontend prototype.</p>
+    <p class="notice">${canUseConnectorConfig() ? "Real API integrations require a backend service, secure secrets storage, and security review. Do not store API keys in this frontend prototype." : "Connector Service Account is a conceptual demo role. No real connector configuration is available in this frontend prototype."}</p>
     <div class="grid connector-grid">
       ${connectors.map((connector) => `
         <div class="card connector-card">
@@ -320,6 +370,10 @@ function renderConnectors() {
 }
 
 function renderUsers() {
+  if (!canViewSection("users")) {
+    document.getElementById("users").innerHTML = restrictedMessage("Users / Roles");
+    return;
+  }
   document.getElementById("users").innerHTML = `
     ${sectionHeader("Users / Roles", "Simulated demo users only. This is not real authentication or backend-enforced authorization.")}
     ${table(["Demo User", "Role", "Prototype Note"], users.map((user) => row([
@@ -331,6 +385,10 @@ function renderUsers() {
 }
 
 function renderAudit() {
+  if (!canViewSection("audit")) {
+    document.getElementById("audit").innerHTML = restrictedMessage("Audit Log");
+    return;
+  }
   document.getElementById("audit").innerHTML = `
     ${sectionHeader("Audit Log", "Mock audit entries showing the intended future audit model.")}
     ${table(["ID", "Timestamp", "User", "Role", "Action", "Object", "Source"], auditLog.map((item) => row([
@@ -341,12 +399,13 @@ function renderAudit() {
 
 
 function renderReports() {
+  const visible = visibleIncidents();
   document.getElementById("reports").innerHTML = `
     ${sectionHeader("Reports", "Basic report preview generated only from documented fictional sample data.")}
     <div class="card report-tools">
       <label for="incidentReportSelect">Incident</label>
       <select id="incidentReportSelect">
-        ${incidents.map((incident) => `<option value="${escapeHtml(incident.id)}">${escapeHtml(incident.id)} - ${escapeHtml(incident.title)}</option>`).join("")}
+        ${visible.map((incident) => `<option value="${escapeHtml(incident.id)}">${escapeHtml(incident.id)} - ${escapeHtml(incident.title)}</option>`).join("")}
       </select>
       <button type="button" id="refreshReport">Refresh Preview</button>
     </div>
@@ -358,7 +417,7 @@ function renderReports() {
   const refresh = document.getElementById("refreshReport");
 
   function updateReport() {
-    preview.textContent = buildReport(select.value);
+    preview.innerHTML = select.value ? buildReportHtml(select.value) : escapeHtml("No incidents available for this demo role.");
   }
 
   select.addEventListener("change", updateReport);
@@ -385,10 +444,21 @@ function renderDataViews() {
 
 
 function renderNav() {
+  const renderChild = (child) => canViewSection(child.section) ? `
+    <button class="nav-subitem" type="button" data-section="${escapeHtml(child.section)}">${escapeHtml(child.label)}</button>
+  ` : "";
+  const visibleGroups = navGroups.map((group) => {
+    if (group.children) {
+      const children = group.children.filter((child) => canViewSection(child.section));
+      return children.length ? { ...group, children } : null;
+    }
+    return canViewSection(group.section) ? group : null;
+  }).filter(Boolean);
+
   nav.innerHTML = `
     <div class="nav-menu">
       <button class="nav-toggle" type="button" id="navToggle" aria-label="Hide navigation panel" aria-expanded="true" title="Hide navigation panel">&lt;</button>
-      ${navGroups.map((group, index) => {
+      ${visibleGroups.map((group, index) => {
       const section = group.section || group.children[0].section;
       const hasChildren = Array.isArray(group.children);
       return `
@@ -398,9 +468,7 @@ function renderNav() {
           </button>
           ${hasChildren ? `
             <div class="nav-submenu">
-              ${group.children.map((child) => `
-                <button class="nav-subitem" type="button" data-section="${escapeHtml(child.section)}">${escapeHtml(child.label)}</button>
-              `).join("")}
+              ${group.children.map(renderChild).join("")}
             </div>
           ` : ""}
         </div>
@@ -434,7 +502,12 @@ function renderNav() {
     if (button.classList.contains("nav-subitem") && groupButton) {
       groupButton.classList.add("active");
     }
-    document.getElementById(button.dataset.section).classList.add("active");
+    const targetSection = button.dataset.section;
+    if (!canViewSection(targetSection)) {
+      showAllowedDefaultSection();
+      return;
+    }
+    document.getElementById(targetSection).classList.add("active");
   });
 }
 
@@ -460,7 +533,10 @@ function renderViewer() {
       source: "System"
     });
     saveAppData();
-    renderAudit();
+    clearAllSelections();
+    renderNav();
+    renderDataViews();
+    showAllowedDefaultSection();
   });
 
   applyRoleTheme();
