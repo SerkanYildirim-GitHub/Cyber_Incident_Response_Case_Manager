@@ -9,8 +9,6 @@ function renderDashboard() {
       <span>${escapeHtml(card.title)}</span>
     </label>
   `).join("");
-  const visible = visibleIncidents();
-  const mappedIncidents = new Set(visibleLinkedRecords(attackMappings).map((mapping) => mapping.incidentId)).size;
 
   document.getElementById("dashboard").innerHTML = `
     ${sectionHeader("Dashboard", `Current fictional incident response activity for ${escapeHtml(role)} demo view.`)}
@@ -35,16 +33,7 @@ function renderDashboard() {
         </div>
       `).join("") || emptyState("No dashboard cards selected. Use Customize Dashboard to enable cards.")}
     </div>
-    <div class="grid two-col">
-      <div>
-        ${renderIncidentTable()}
-      </div>
-      <div class="card">
-        <h3>Prototype Coverage</h3>
-        <p>${mappedIncidents} visible incidents have documented ATT&amp;CK mappings. ${Math.max(visible.length - mappedIncidents, 0)} visible incident(s) have no mapping documented yet.</p>
-        <p class="notice">All records are fictional. Role switching is frontend demo behavior only, not real authentication or production RBAC.</p>
-      </div>
-    </div>
+    ${renderIncidentTable()}
   `;
 }
 

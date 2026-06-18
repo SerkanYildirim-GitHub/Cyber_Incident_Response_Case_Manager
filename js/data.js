@@ -52,10 +52,89 @@ const navGroups = [
 
 const roleOptions = [
   { label: "View as Admin", role: "Admin", theme: "role-admin" },
-  { label: "View as Manager", role: "Incident Manager", theme: "role-manager" },
+  { label: "View as Incident Manager", role: "Incident Manager", theme: "role-manager" },
   { label: "View as Analyst", role: "Analyst", theme: "role-analyst" },
+  { label: "View as Viewer", role: "Viewer", theme: "role-user" },
   { label: "View as Auditor", role: "Auditor", theme: "role-auditor" },
-  { label: "View as User", role: "User", theme: "role-user" }
+  { label: "View as Connector Service", role: "Connector Service Account", theme: "role-manager" }
+];
+
+const dashboardCards = [
+  {
+    id: "total-incidents",
+    title: "Total incidents",
+    description: "Incidents visible to the selected demo role.",
+    style: "neutral",
+    roles: ["Admin", "Incident Manager", "Analyst", "Viewer"],
+    enabled: true,
+    value: () => visibleIncidents().length
+  },
+  {
+    id: "open-incidents",
+    title: "Open incidents",
+    description: "Visible incidents that are not closed or false positive.",
+    style: "info",
+    roles: ["Admin", "Incident Manager", "Analyst", "Viewer"],
+    enabled: true,
+    value: () => visibleIncidents().filter((incident) => !["Closed", "False Positive"].includes(incident.status)).length
+  },
+  {
+    id: "high-critical",
+    title: "High / Critical",
+    description: "Visible incidents with High or Critical severity.",
+    style: "critical",
+    roles: ["Admin", "Incident Manager", "Analyst"],
+    enabled: true,
+    value: () => visibleIncidents().filter((incident) => ["High", "Critical"].includes(incident.severity)).length
+  },
+  {
+    id: "open-actions",
+    title: "Open actions",
+    description: "Response actions linked to visible incidents.",
+    style: "medium",
+    roles: ["Admin", "Incident Manager", "Analyst"],
+    enabled: true,
+    value: () => {
+      const visibleIds = new Set(visibleIncidents().map((incident) => incident.id));
+      return actions.filter((action) => visibleIds.has(action.incidentId) && !["Done", "Cancelled"].includes(action.status)).length;
+    }
+  },
+  {
+    id: "closed-incidents",
+    title: "Closed incidents",
+    description: "Closed cases visible to the selected role.",
+    style: "low",
+    roles: ["Admin", "Incident Manager", "Auditor"],
+    enabled: true,
+    value: () => visibleIncidents().filter((incident) => incident.status === "Closed").length
+  },
+  {
+    id: "audit-events",
+    title: "Audit events",
+    description: "Mock audit entries available to privileged demo roles.",
+    style: "neutral",
+    roles: ["Admin", "Incident Manager", "Auditor", "Connector Service Account"],
+    enabled: true,
+    value: () => auditLog.length
+  },
+  {
+    id: "reports-ready",
+    title: "Reports available",
+    description: "Visible incidents available for report preview.",
+    style: "info",
+    roles: ["Admin", "Incident Manager", "Analyst", "Viewer", "Auditor"],
+    enabled: true,
+    value: () => visibleIncidents().length
+  },
+  {
+    id: "connector-context",
+    title: "Connector context",
+    description: "Mock connector cards available in demo mode.",
+    style: "neutral",
+    roles: ["Admin", "Incident Manager", "Connector Service Account"],
+    enabled: true,
+    value: () => connectors.length
+  }
 ];
 
 const users = [
@@ -75,6 +154,7 @@ let incidents = [
     status: "Investigating",
     type: "Phishing",
     owner: "Riley Analyst",
+    assignedUsers: "Riley Analyst",
     assignedTeam: "Security Operations",
     detectionSource: "Email security alert",
     opened: "2026-06-14 09:12",
@@ -93,6 +173,7 @@ let incidents = [
     status: "Containment",
     type: "Malware",
     owner: "Morgan Manager",
+    assignedUsers: "Morgan Manager",
     assignedTeam: "Endpoint Response",
     detectionSource: "Mock EDR alert",
     opened: "2026-06-15 13:41",
@@ -111,6 +192,7 @@ let incidents = [
     status: "Triage",
     type: "Network Alert",
     owner: "Riley Analyst",
+    assignedUsers: "Riley Analyst, Jordan Viewer",
     assignedTeam: "Infrastructure",
     detectionSource: "Mock PRTG alert",
     opened: "2026-06-16 08:20",

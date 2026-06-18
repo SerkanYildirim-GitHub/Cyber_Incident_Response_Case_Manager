@@ -1,4 +1,5 @@
 const storageKey = "irCaseManagerDemoData.v1";
+const dashboardPrefsKey = "irCaseManagerDashboardPrefs.v1";
 const sampleData = {
   incidents: JSON.parse(JSON.stringify(incidents)),
   artifacts: JSON.parse(JSON.stringify(artifacts)),
@@ -13,6 +14,7 @@ const sampleData = {
 };
 let appData = null;
 let storageNotice = "";
+let dashboardPrefs = {};
 
 
 function validateAppData(data) {
@@ -37,6 +39,14 @@ function syncDataRefs(data) {
   auditLog = data.auditLog;
 }
 
+function normalizeAppData(data) {
+  data.incidents = data.incidents.map((incident) => {
+    const defaultIncident = sampleData.incidents.find((item) => item.id === incident.id);
+    return defaultIncident ? { ...defaultIncident, ...incident } : incident;
+  });
+  return data;
+}
+
 function saveAppData() {
   localStorage.setItem(storageKey, JSON.stringify(appData));
 }
@@ -55,7 +65,8 @@ function loadAppData() {
     if (!validateAppData(parsed)) {
       throw new Error("Stored demo data is missing required collections.");
     }
-    appData = parsed;
+    appData = normalizeAppData(parsed);
+    saveAppData();
     syncDataRefs(appData);
   } catch (error) {
     appData = cloneData(sampleData);
@@ -64,9 +75,49 @@ function loadAppData() {
   }
 }
 
+function loadDashboardPrefs() {
+  try {
+    dashboardPrefs = JSON.parse(localStorage.getItem(dashboardPrefsKey) || "{}");
+  } catch (error) {
+    dashboardPrefs = {};
+  }
+}
+
+function saveDashboardPrefs() {
+  localStorage.setItem(dashboardPrefsKey, JSON.stringify(dashboardPrefs));
+}
+
+function dashboardPrefKey(role = currentRole()) {
+  return role.replace(/\s+/g, "-").toLowerCase();
+}
+
+function visibleDashboardCardIds(role = currentRole()) {
+  const key = dashboardPrefKey(role);
+  const allowedIds = dashboardCards.filter((card) => canViewDashboardCard(card, role)).map((card) => card.id);
+  const stored = Array.isArray(dashboardPrefs[key]) ? dashboardPrefs[key] : allowedIds;
+  return stored.filter((id) => allowedIds.includes(id));
+}
+
+function setDashboardCardVisible(cardId, visible) {
+  const role = currentRole();
+  const key = dashboardPrefKey(role);
+  const allowedIds = dashboardCards.filter((card) => canViewDashboardCard(card, role)).map((card) => card.id);
+  const current = new Set(visibleDashboardCardIds(role));
+  if (visible) current.add(cardId);
+  else current.delete(cardId);
+  dashboardPrefs[key] = allowedIds.filter((id) => current.has(id));
+  saveDashboardPrefs();
+}
+
+function resetDashboardPrefs() {
+  delete dashboardPrefs[dashboardPrefKey()];
+  saveDashboardPrefs();
+  renderDashboard();
+}
+
 
 function selectedRole() {
-  const selected = roleOptions.find((option) => option.role === viewerSelect.value) || roleOptions[0];
+  const selected = currentRoleOption();
   return { user: selected.label, role: selected.role };
 }
 

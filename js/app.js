@@ -56,11 +56,22 @@ function clearStaleSelections() {
 }
 
 function showSection(sectionId) {
+  if (!canViewSection(sectionId)) {
+    showAllowedDefaultSection();
+    return;
+  }
   document.querySelectorAll(".section").forEach((item) => item.classList.remove("active"));
   const section = document.getElementById(sectionId);
   if (section) {
     section.classList.add("active");
   }
+}
+
+function showAllowedDefaultSection() {
+  const defaultSection = canViewSection("dashboard") ? "dashboard" : sections.find(([id]) => canViewSection(id))?.[0];
+  if (!defaultSection) return;
+  document.querySelectorAll(".section").forEach((item) => item.classList.remove("active"));
+  document.getElementById(defaultSection)?.classList.add("active");
 }
 
 function selectIncident(incidentId) {
@@ -103,66 +114,69 @@ function clearAllSelections() {
   selectedState.timelineId = "";
 }
 
+function handleSelectionClick(event) {
+  const backButton = event.target.closest("[data-back-list]");
+  if (backButton) {
+    clearSelectionForList(backButton.dataset.backList);
+    return;
+  }
+
+  if (event.target.closest("button")) {
+    return;
+  }
+
+  const incidentRow = event.target.closest("[data-select-incident]");
+  if (incidentRow) {
+    selectIncident(incidentRow.dataset.selectIncident);
+    return;
+  }
+
+  const artifactRow = event.target.closest("[data-select-artifact]");
+  if (artifactRow) {
+    selectArtifact(artifactRow.dataset.selectArtifact);
+    return;
+  }
+
+  const actionRow = event.target.closest("[data-select-action]");
+  if (actionRow) {
+    selectAction(actionRow.dataset.selectAction);
+    return;
+  }
+
+  const timelineRow = event.target.closest("[data-select-timeline]");
+  if (timelineRow) {
+    selectTimelineEvent(timelineRow.dataset.selectTimeline);
+  }
+}
+
+function handleSelectionKeydown(event) {
+  if (event.key !== "Enter" && event.key !== " ") {
+    return;
+  }
+
+  const target = event.target;
+  if (!(target instanceof HTMLElement)) {
+    return;
+  }
+
+  if (target.matches("[data-select-incident]")) {
+    event.preventDefault();
+    selectIncident(target.dataset.selectIncident);
+  } else if (target.matches("[data-select-artifact]")) {
+    event.preventDefault();
+    selectArtifact(target.dataset.selectArtifact);
+  } else if (target.matches("[data-select-action]")) {
+    event.preventDefault();
+    selectAction(target.dataset.selectAction);
+  } else if (target.matches("[data-select-timeline]")) {
+    event.preventDefault();
+    selectTimelineEvent(target.dataset.selectTimeline);
+  }
+}
+
 function bindSelectionActions() {
-  document.addEventListener("click", (event) => {
-    const backButton = event.target.closest("[data-back-list]");
-    if (backButton) {
-      clearSelectionForList(backButton.dataset.backList);
-      return;
-    }
-
-    if (event.target.closest("button")) {
-      return;
-    }
-
-    const incidentRow = event.target.closest("[data-select-incident]");
-    if (incidentRow) {
-      selectIncident(incidentRow.dataset.selectIncident);
-      return;
-    }
-
-    const artifactRow = event.target.closest("[data-select-artifact]");
-    if (artifactRow) {
-      selectArtifact(artifactRow.dataset.selectArtifact);
-      return;
-    }
-
-    const actionRow = event.target.closest("[data-select-action]");
-    if (actionRow) {
-      selectAction(actionRow.dataset.selectAction);
-      return;
-    }
-
-    const timelineRow = event.target.closest("[data-select-timeline]");
-    if (timelineRow) {
-      selectTimelineEvent(timelineRow.dataset.selectTimeline);
-    }
-  });
-
-  document.addEventListener("keydown", (event) => {
-    if (event.key !== "Enter" && event.key !== " ") {
-      return;
-    }
-
-    const target = event.target;
-    if (!(target instanceof HTMLElement)) {
-      return;
-    }
-
-    if (target.matches("[data-select-incident]")) {
-      event.preventDefault();
-      selectIncident(target.dataset.selectIncident);
-    } else if (target.matches("[data-select-artifact]")) {
-      event.preventDefault();
-      selectArtifact(target.dataset.selectArtifact);
-    } else if (target.matches("[data-select-action]")) {
-      event.preventDefault();
-      selectAction(target.dataset.selectAction);
-    } else if (target.matches("[data-select-timeline]")) {
-      event.preventDefault();
-      selectTimelineEvent(target.dataset.selectTimeline);
-    }
-  });
+  document.addEventListener("click", handleSelectionClick);
+  document.addEventListener("keydown", handleSelectionKeydown);
 }
 
 
@@ -174,7 +188,23 @@ function clearIncidentForm() {
   incidentFormError.classList.remove("visible");
 }
 
-function openIncidentModal(mode, incidentId) {
+function populateIncidentForm(incident) {
+  Object.keys(incidentFields).forEach((key) => {
+    incidentFields[key].value = key === "opened" || key === "closed" ? toDateTimeInputValue(incident[key]) : incident[key] || "";
+  });
+}
+
+function prepareNewIncidentForm() {
+  if (!canCreateIncident()) {
+    alert("This demo role cannot create incidents.");
+    return false;
+  }
+
+  incidentFields.id.value = nextIncidentId();
+  return true;
+}
+
+function prepareIncidentModal(mode, incidentId) {
   clearIncidentForm();
   incidentMode.value = mode;
   incidentModalTitle.textContent = mode === "edit" ? "Edit Incident" : "Create Incident";
@@ -184,12 +214,21 @@ function openIncidentModal(mode, incidentId) {
     if (!incident) {
       return;
     }
+    if (!canEditIncident(incident)) {
+      alert("This demo role cannot edit this incident.");
+      return false;
+    }
 
-    Object.keys(incidentFields).forEach((key) => {
-      incidentFields[key].value = key === "opened" || key === "closed" ? toDateTimeInputValue(incident[key]) : incident[key] || "";
-    });
-  } else {
-    incidentFields.id.value = nextIncidentId();
+    populateIncidentForm(incident);
+    return true;
+  }
+
+  return prepareNewIncidentForm();
+}
+
+function openIncidentModal(mode, incidentId) {
+  if (!prepareIncidentModal(mode, incidentId)) {
+    return;
   }
 
   incidentModal.classList.add("open");
@@ -241,28 +280,44 @@ function showIncidentFormError(message) {
   incidentFormError.classList.add("visible");
 }
 
-function saveIncidentFromForm(event) {
+function buildIncidentFromForm() {
+  return readIncidentForm();
+}
+
+function validateIncidentFormData(incident) {
+  return validateIncidentForm(incident, incidentMode.value);
+}
+
+function createIncidentFromForm(incident) {
+  incidents.unshift(incident);
+  addAuditEntry("Incident created", incident.id);
+}
+
+function updateIncidentFromForm(incident) {
+  const index = incidents.findIndex((item) => item.id === incident.id);
+  if (index === -1) {
+    return "Incident could not be found.";
+  }
+
+  incidents[index] = { ...incidents[index], ...incident };
+  addAuditEntry("Incident edited", incident.id);
+  return "";
+}
+
+function handleIncidentSave(event) {
   event.preventDefault();
   const mode = incidentMode.value;
-  const incident = readIncidentForm();
-  const validationMessage = validateIncidentForm(incident, mode);
-
+  const incident = buildIncidentFromForm();
+  const validationMessage = validateIncidentFormData(incident);
   if (validationMessage) {
     showIncidentFormError(validationMessage);
     return;
   }
 
-  if (mode === "edit") {
-    const index = incidents.findIndex((item) => item.id === incident.id);
-    if (index === -1) {
-      showIncidentFormError("Incident could not be found.");
-      return;
-    }
-    incidents[index] = { ...incidents[index], ...incident };
-    addAuditEntry("Incident edited", incident.id);
-  } else {
-    incidents.unshift(incident);
-    addAuditEntry("Incident created", incident.id);
+  const saveError = mode === "edit" ? updateIncidentFromForm(incident) : createIncidentFromForm(incident);
+  if (saveError) {
+    showIncidentFormError(saveError);
+    return;
   }
 
   saveAppData();
@@ -270,31 +325,56 @@ function saveIncidentFromForm(event) {
   renderDataViews();
 }
 
-function deleteIncident(incidentId) {
-  const incident = incidents.find((item) => item.id === incidentId);
+function saveIncidentFromForm(event) {
+  handleIncidentSave(event);
+}
+
+function findIncidentForDelete(incidentId) {
+  return incidents.find((item) => item.id === incidentId);
+}
+
+function canDeleteIncidentSafely(incident) {
   if (!incident) {
-    return;
+    return false;
   }
 
-  const linkCount = linkedRecordCount(incidentId);
+  if (!canDeleteIncident(incident)) {
+    alert("This demo role cannot delete incidents.");
+    return false;
+  }
+
+  const linkCount = linkedRecordCount(incident.id);
   if (linkCount > 0) {
     alert(`Cannot delete ${incident.id} because it has ${linkCount} linked demo record(s). Remove linked records or reset demo data first.`);
-    return;
+    return false;
   }
 
-  if (!confirm(`Delete fictional incident ${incident.id}?`)) {
-    return;
-  }
+  return true;
+}
 
-  appData.incidents = incidents.filter((item) => item.id !== incidentId);
+function confirmIncidentDelete(incident) {
+  return confirm(`Delete fictional incident ${incident.id}?`);
+}
+
+function performIncidentDelete(incident) {
+  appData.incidents = incidents.filter((item) => item.id !== incident.id);
   syncDataRefs(appData);
   selectedState.incidentId = "";
-  addAuditEntry("Incident deleted", incidentId);
+  addAuditEntry("Incident deleted", incident.id);
   saveAppData();
   renderDataViews();
 }
 
-function bindIncidentActions() {
+function deleteIncident(incidentId) {
+  const incident = findIncidentForDelete(incidentId);
+  if (!canDeleteIncidentSafely(incident) || !confirmIncidentDelete(incident)) {
+    return;
+  }
+
+  performIncidentDelete(incident);
+}
+
+function bindIncidentButtonActions() {
   document.addEventListener("click", (event) => {
     const createButton = event.target.closest("#createIncident");
     if (createButton) {
@@ -319,10 +399,13 @@ function bindIncidentActions() {
       deleteIncident(deleteButton.dataset.deleteIncident);
     }
   });
+}
 
+function bindIncidentFormSubmit() {
   incidentForm.addEventListener("submit", saveIncidentFromForm);
-  closeIncidentModal.addEventListener("click", closeIncidentFormModal);
-  cancelIncidentForm.addEventListener("click", closeIncidentFormModal);
+}
+
+function bindIncidentDateFieldBehavior() {
   [incidentFields.opened, incidentFields.closed].forEach((field) => {
     field.addEventListener("keydown", (event) => event.preventDefault());
     field.addEventListener("paste", (event) => event.preventDefault());
@@ -332,11 +415,55 @@ function bindIncidentActions() {
       }
     });
   });
+}
+
+function bindIncidentModalControls() {
+  closeIncidentModal.addEventListener("click", closeIncidentFormModal);
+  cancelIncidentForm.addEventListener("click", closeIncidentFormModal);
   incidentModal.addEventListener("click", (event) => {
     if (event.target === incidentModal) {
       closeIncidentFormModal();
     }
   });
+}
+
+function bindIncidentActions() {
+  bindIncidentButtonActions();
+  bindIncidentFormSubmit();
+  bindIncidentModalControls();
+  bindIncidentDateFieldBehavior();
+}
+
+function bindDashboardClickActions() {
+  document.addEventListener("click", (event) => {
+    const customizeButton = event.target.closest("#customizeDashboard");
+    if (customizeButton) {
+      const panel = document.getElementById("dashboardCustomizer");
+      if (panel) panel.hidden = !panel.hidden;
+      return;
+    }
+
+    const resetButton = event.target.closest("#resetDashboardLayout");
+    if (resetButton) {
+      resetDashboardPrefs();
+    }
+  });
+}
+
+function bindDashboardChangeActions() {
+  document.addEventListener("change", (event) => {
+    const checkbox = event.target.closest("[data-dashboard-card]");
+    if (!checkbox) return;
+    setDashboardCardVisible(checkbox.dataset.dashboardCard, checkbox.checked);
+    renderDashboard();
+    const panel = document.getElementById("dashboardCustomizer");
+    if (panel) panel.hidden = false;
+  });
+}
+
+function bindDashboardActions() {
+  bindDashboardClickActions();
+  bindDashboardChangeActions();
 }
 
 
@@ -354,23 +481,41 @@ function hideDisclaimer() {
   }
 }
 
-function bindDisclaimerModal() {
+function bindDisclaimerToggle() {
   openDisclaimer = document.getElementById("openDisclaimer");
   openDisclaimer.addEventListener("click", showDisclaimer);
   closeDisclaimer.addEventListener("click", hideDisclaimer);
+}
+
+function bindDisclaimerBackdropClose() {
   disclaimerModal.addEventListener("click", (event) => {
     if (event.target === disclaimerModal) {
       hideDisclaimer();
     }
   });
+}
+
+function bindDisclaimerKeyboardControls() {
   document.addEventListener("keydown", (event) => {
     if (event.key === "Escape" && disclaimerModal.classList.contains("open")) {
       hideDisclaimer();
     }
+  });
+}
+
+function bindIncidentModalKeyboardControls() {
+  document.addEventListener("keydown", (event) => {
     if (event.key === "Escape" && incidentModal.classList.contains("open")) {
       closeIncidentFormModal();
     }
   });
+}
+
+function bindDisclaimerModal() {
+  bindDisclaimerToggle();
+  bindDisclaimerBackdropClose();
+  bindDisclaimerKeyboardControls();
+  bindIncidentModalKeyboardControls();
 }
 
 function renderAll() {
@@ -378,9 +523,12 @@ function renderAll() {
   renderViewer();
   bindDisclaimerModal();
   bindIncidentActions();
+  bindDashboardActions();
   bindSelectionActions();
   renderDataViews();
+  showAllowedDefaultSection();
 }
 
 loadAppData();
+loadDashboardPrefs();
 renderAll();
