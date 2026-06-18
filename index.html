@@ -7,19 +7,22 @@
   <style>
     :root {
       color-scheme: light;
-      --bg: #f4f6f8;
+      --bg: #f7f9fc;
       --surface: #ffffff;
-      --surface-soft: #eef3f7;
-      --line: #d7dee8;
+      --surface-soft: #f1f6fb;
+      --line: #e0e7ef;
       --text: #17202a;
-      --muted: #637083;
-      --accent: #1b6b8f;
-      --accent-dark: #124f6a;
+      --muted: #68778a;
+      --accent: #2f7fa2;
+      --accent-dark: #1f5f7c;
+      --accent-soft: #e5f3f8;
+      --nav-hover: #f3f8fb;
       --ok: #0f766e;
       --warn: #9a5b00;
       --danger: #b42318;
       --critical: #7f1d1d;
-      --shadow: 0 14px 34px rgba(28, 39, 49, 0.08);
+      --shadow: 0 12px 30px rgba(34, 57, 78, 0.07);
+      --shadow-hover: 0 16px 38px rgba(47, 127, 162, 0.14);
     }
 
     * {
@@ -38,34 +41,103 @@
       font: inherit;
     }
 
+    button,
+    .card,
+    table,
+    .modal {
+      transition: background-color 180ms ease, border-color 180ms ease, box-shadow 180ms ease, color 180ms ease, transform 180ms ease;
+    }
+
     .app {
       min-height: 100vh;
       display: grid;
       grid-template-columns: 260px minmax(0, 1fr);
       grid-template-rows: auto 1fr;
+      transition: grid-template-columns 180ms ease;
+    }
+
+    .app.nav-collapsed {
+      grid-template-columns: 58px minmax(0, 1fr);
     }
 
     header {
       grid-column: 1 / -1;
-      background: #0f1720;
+      background: linear-gradient(135deg, #23384a 0%, #2f6074 100%);
       color: #fff;
-      border-bottom: 4px solid var(--accent);
-      padding: 18px 24px;
+      border-bottom: 1px solid #b8d6e3;
+      padding: 20px 24px;
       display: flex;
       align-items: center;
       justify-content: space-between;
       gap: 18px;
+      box-shadow: 0 14px 34px rgba(35, 56, 74, 0.18);
+    }
+
+    header.role-admin {
+      background: linear-gradient(135deg, #d9f4df 0%, #b7e6c2 100%);
+      color: #173b24;
+      border-bottom-color: #9bd1aa;
+    }
+
+    .app:has(header.role-admin) nav {
+      background: linear-gradient(180deg, #effaf2 0%, #d9f4df 100%);
+      border-right-color: #b7dfc1;
+    }
+
+    header.role-manager {
+      background: linear-gradient(135deg, #dbeafe 0%, #c7ddf7 100%);
+      color: #18324d;
+      border-bottom-color: #a8c6e8;
+    }
+
+    .app:has(header.role-manager) nav {
+      background: linear-gradient(180deg, #f1f7ff 0%, #dbeafe 100%);
+      border-right-color: #bfd5ef;
+    }
+
+    header.role-analyst {
+      background: linear-gradient(135deg, #dff5f2 0%, #bfe6df 100%);
+      color: #143f3a;
+      border-bottom-color: #9ccfc5;
+    }
+
+    .app:has(header.role-analyst) nav {
+      background: linear-gradient(180deg, #f0fbf9 0%, #dff5f2 100%);
+      border-right-color: #b9ddd6;
+    }
+
+    header.role-auditor {
+      background: linear-gradient(135deg, #ede9fe 0%, #ddd6fe 100%);
+      color: #33235f;
+      border-bottom-color: #c4b5fd;
+    }
+
+    .app:has(header.role-auditor) nav {
+      background: linear-gradient(180deg, #f7f5ff 0%, #ede9fe 100%);
+      border-right-color: #d3c9fb;
+    }
+
+    header.role-user {
+      background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%);
+      color: #5f1717;
+      border-bottom-color: #fca5a5;
+    }
+
+    .app:has(header.role-user) nav {
+      background: linear-gradient(180deg, #fff5f5 0%, #fee2e2 100%);
+      border-right-color: #f7b9b9;
     }
 
     .brand h1 {
-      margin: 0 0 4px;
-      font-size: 1.45rem;
+      margin: 0;
+      font-size: 1.58rem;
+      font-weight: 800;
       letter-spacing: 0;
     }
 
     .brand p {
       margin: 0;
-      color: #cbd5e1;
+      color: var(--muted);
       font-size: 0.92rem;
       max-width: 820px;
       line-height: 1.4;
@@ -74,66 +146,225 @@
     .viewer {
       display: grid;
       gap: 6px;
-      min-width: 250px;
+      min-width: 170px;
+      background: rgba(255, 255, 255, 0.13);
+      border: 1px solid rgba(255, 255, 255, 0.24);
+      border-radius: 8px;
+      padding: 12px;
+      box-shadow: 0 12px 28px rgba(15, 23, 32, 0.14);
     }
 
     .viewer label {
-      color: #cbd5e1;
+      color: #e6f1f5;
       font-size: 0.78rem;
       text-transform: uppercase;
       letter-spacing: 0.08em;
     }
 
+    header.role-admin .viewer label,
+    header.role-manager .viewer label,
+    header.role-analyst .viewer label,
+    header.role-auditor .viewer label,
+    header.role-user .viewer label {
+      color: currentColor;
+    }
+
     .viewer select {
       width: 100%;
-      border: 1px solid #475569;
-      background: #17212d;
-      color: #fff;
+      border: 1px solid rgba(255, 255, 255, 0.28);
+      background: #ffffff;
+      color: #17202a;
       border-radius: 6px;
       padding: 10px 12px;
+      box-shadow: 0 8px 18px rgba(15, 23, 32, 0.12);
     }
 
     nav {
-      background: #182230;
+      background: #fbfdff;
       padding: 14px;
-      border-right: 1px solid #111827;
+      border-right: 1px solid var(--line);
+      box-shadow: inset -1px 0 0 rgba(255, 255, 255, 0.7);
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      transition: padding 180ms ease, background-color 180ms ease;
+    }
+
+    .nav-menu {
+      flex: 1;
+    }
+
+    @property --edge-angle {
+      syntax: "<angle>";
+      inherits: false;
+      initial-value: 0deg;
+    }
+
+    @keyframes edgeLine {
+      to {
+        --edge-angle: 360deg;
+      }
+    }
+
+    .nav-toggle {
+      width: 30px;
+      height: 30px;
+      display: grid;
+      place-items: center;
+      border: 1px solid var(--line);
+      background: #fff;
+      color: var(--accent-dark);
+      border-radius: 999px;
+      cursor: pointer;
+      margin: 0 0 12px auto;
+      box-shadow: 0 8px 18px rgba(47, 127, 162, 0.1);
+      transition: background-color 180ms ease, border-color 180ms ease, box-shadow 180ms ease, color 180ms ease, transform 180ms ease;
+    }
+
+    .nav-toggle:hover,
+    .nav-toggle:focus {
+      background: var(--accent-soft);
+      border-color: #b9dbe8;
+      box-shadow: 0 12px 26px rgba(47, 127, 162, 0.16);
+      transform: translateY(-1px);
     }
 
     .nav-button {
       width: 100%;
-      border: 0;
+      border: 1px solid transparent;
       background: transparent;
-      color: #d8e0ea;
+      color: #425466;
       text-align: left;
       padding: 11px 12px;
       border-radius: 6px;
       cursor: pointer;
       margin-bottom: 4px;
+      position: relative;
+      isolation: isolate;
+      overflow: hidden;
+      transition: background-color 180ms ease, border-color 180ms ease, box-shadow 180ms ease, color 180ms ease, transform 180ms ease;
     }
 
-    .nav-button:hover,
+    .nav-button::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      z-index: 1;
+      padding: 2px;
+      opacity: 0;
+      background: conic-gradient(from var(--edge-angle), transparent 0deg 284deg, rgba(216, 164, 41, 0.05) 296deg, #d8a429 318deg, #fff1a8 330deg, #d8a429 342deg, rgba(216, 164, 41, 0.05) 354deg, transparent 360deg);
+      border-radius: inherit;
+      filter: drop-shadow(0 0 7px rgba(216, 164, 41, 0.72));
+      -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+      -webkit-mask-composite: xor;
+      mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+      mask-composite: exclude;
+      animation: edgeLine 1.8s linear infinite;
+      transition: opacity 180ms ease;
+      pointer-events: none;
+    }
+
+    .nav-button:hover {
+      background: var(--nav-hover);
+      border-color: #d7e8f1;
+      color: var(--accent-dark);
+      box-shadow: 0 10px 24px rgba(47, 127, 162, 0.11);
+      transform: translateY(-1px);
+    }
+
+    .nav-button:hover::before,
+    .nav-button:focus::before,
+    .nav-group:hover > .nav-button::before,
+    .nav-group:focus-within > .nav-button::before {
+      opacity: 1;
+    }
+
     .nav-button.active {
-      background: #263545;
-      color: #fff;
+      background: var(--accent-soft);
+      border-color: #b9dbe8;
+      color: var(--accent-dark);
+      box-shadow: inset 3px 0 0 var(--accent), 0 8px 18px rgba(47, 127, 162, 0.08);
+      font-weight: 700;
+    }
+
+    .nav-group {
+      position: relative;
+      margin-bottom: 6px;
+    }
+
+    .nav-button.has-children {
+      padding-right: 32px;
+    }
+
+    .nav-button.has-children::after {
+      content: ">";
+      position: absolute;
+      right: 12px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: var(--accent-dark);
+      font-weight: 700;
+      opacity: 0.72;
+    }
+
+    .nav-submenu {
+      display: none;
+      margin: 4px 0 10px 12px;
+      padding: 7px 0 7px 12px;
+      border-left: 1px solid #cfe0ea;
+    }
+
+    .nav-group:hover .nav-submenu,
+    .nav-group:focus-within .nav-submenu {
+      display: grid;
+      gap: 4px;
+    }
+
+    .nav-subitem {
+      width: 100%;
+      border: 1px solid transparent;
+      background: transparent;
+      color: #536578;
+      text-align: left;
+      padding: 8px 10px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 0.88rem;
+      transition: background-color 180ms ease, border-color 180ms ease, box-shadow 180ms ease, color 180ms ease, transform 180ms ease;
+    }
+
+    .nav-subitem:hover,
+    .nav-subitem:focus,
+    .nav-subitem.active {
+      background: #f3f8fb;
+      border-color: #d7e8f1;
+      color: var(--accent-dark);
+      box-shadow: 0 8px 18px rgba(47, 127, 162, 0.08);
+      transform: translateY(-1px);
+    }
+
+    .app.nav-collapsed nav {
+      padding: 14px 13px;
+    }
+
+    .app.nav-collapsed .nav-toggle {
+      margin-right: 0;
+      margin-left: 0;
+    }
+
+    .app.nav-collapsed .nav-button {
+      opacity: 0;
+      pointer-events: none;
+      transform: translateX(-8px);
+    }
+
+    .app.nav-collapsed .nav-submenu {
+      display: none;
     }
 
     main {
       padding: 22px;
       overflow: auto;
-    }
-
-    .disclaimer {
-      background: #fff7ed;
-      border: 1px solid #fed7aa;
-      border-left: 5px solid var(--warn);
-      padding: 14px 16px;
-      border-radius: 6px;
-      margin-bottom: 18px;
-      line-height: 1.45;
-    }
-
-    .disclaimer strong {
-      color: #7c2d12;
     }
 
     .section {
@@ -185,6 +416,12 @@
       padding: 16px;
     }
 
+    .card:hover {
+      border-color: #cddce8;
+      box-shadow: var(--shadow-hover);
+      transform: translateY(-1px);
+    }
+
     .metric .label {
       color: var(--muted);
       font-size: 0.82rem;
@@ -206,6 +443,11 @@
       border-radius: 8px;
       overflow: hidden;
       box-shadow: var(--shadow);
+    }
+
+    table:hover {
+      border-color: #cddce8;
+      box-shadow: var(--shadow-hover);
     }
 
     th,
@@ -331,6 +573,14 @@
       color: #fff;
       border-color: var(--accent-dark);
       cursor: pointer;
+      box-shadow: 0 8px 18px rgba(47, 127, 162, 0.14);
+    }
+
+    .report-tools button:hover,
+    .report-tools button:focus {
+      background: #358cad;
+      box-shadow: 0 12px 28px rgba(47, 127, 162, 0.22);
+      transform: translateY(-1px);
     }
 
     .report-preview {
@@ -355,6 +605,99 @@
       line-height: 1.45;
     }
 
+    .app-footer {
+      margin-top: auto;
+      padding: 16px 0 4px;
+      color: var(--muted);
+      font-size: 0.84rem;
+      text-align: center;
+      border-top: 1px solid rgba(104, 119, 138, 0.18);
+    }
+
+    .footer-link {
+      border: 0;
+      background: transparent;
+      color: var(--muted);
+      cursor: pointer;
+      padding: 4px 0;
+      text-decoration: underline;
+      text-underline-offset: 3px;
+    }
+
+    .footer-link:hover,
+    .footer-link:focus {
+      color: var(--accent-dark);
+      text-shadow: 0 0 12px rgba(47, 127, 162, 0.2);
+    }
+
+    .powered-by {
+      margin: 8px 0 0;
+      color: var(--muted);
+      font-size: 0.78rem;
+    }
+
+    .modal-backdrop {
+      position: fixed;
+      inset: 0;
+      z-index: 20;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      background: rgba(15, 23, 32, 0.46);
+    }
+
+    .modal-backdrop.open {
+      display: flex;
+    }
+
+    .modal {
+      width: min(520px, 100%);
+      background: var(--surface);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      box-shadow: 0 24px 60px rgba(15, 23, 32, 0.24);
+      padding: 18px;
+    }
+
+    .modal-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 14px;
+      margin-bottom: 10px;
+    }
+
+    .modal-header h2 {
+      margin: 0;
+      font-size: 1.05rem;
+    }
+
+    .modal p {
+      margin: 0;
+      color: #334155;
+      line-height: 1.5;
+    }
+
+    .modal-close {
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      background: #fff;
+      color: var(--text);
+      cursor: pointer;
+      min-width: 36px;
+      min-height: 32px;
+    }
+
+    .modal-close:hover,
+    .modal-close:focus {
+      border-color: var(--accent);
+      color: var(--accent-dark);
+      background: var(--accent-soft);
+      box-shadow: 0 10px 22px rgba(47, 127, 162, 0.12);
+      transform: translateY(-1px);
+    }
+
     @media (max-width: 980px) {
       .app {
         grid-template-columns: 1fr;
@@ -365,11 +708,51 @@
         flex-direction: column;
       }
 
+      .viewer {
+        min-width: 0;
+      }
+
       nav {
         display: flex;
         overflow-x: auto;
         border-right: 0;
-        border-bottom: 1px solid #111827;
+        border-bottom: 1px solid var(--line);
+      }
+
+      .nav-menu {
+        display: flex;
+        gap: 4px;
+      }
+
+      .app-footer {
+        display: none;
+      }
+
+      .nav-toggle {
+        flex: 0 0 auto;
+        margin: 0 8px 0 0;
+      }
+
+      .app.nav-collapsed {
+        grid-template-columns: 1fr;
+      }
+
+      .app.nav-collapsed .nav-button {
+        display: none;
+      }
+
+      .nav-submenu {
+        position: absolute;
+        left: 0;
+        top: 44px;
+        z-index: 5;
+        min-width: 220px;
+        margin: 0;
+        padding: 8px;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        background: #fff;
+        box-shadow: var(--shadow-hover);
       }
 
       .nav-button {
@@ -386,26 +769,20 @@
   </style>
 </head>
 <body>
-  <div class="app">
+  <div class="app" id="appShell">
     <header>
       <div class="brand">
-        <h1>Cyber Incident Response Case Manager</h1>
-        <p>Local-first educational prototype for organizing internal cyber incidents, artifacts, indicators, timelines, response actions, ATT&amp;CK mappings, and incident reports.</p>
+        <h1>IR Case Manager</h1>
       </div>
       <div class="viewer">
-        <label for="viewerSelect">Viewing as demo user</label>
+        <label for="viewerSelect">View As</label>
         <select id="viewerSelect"></select>
       </div>
     </header>
 
-    <nav id="nav"></nav>
+    <nav id="nav" aria-label="Main navigation"></nav>
 
     <main>
-      <div class="disclaimer">
-        <strong>Educational prototype:</strong>
-        This is an educational prototype using browser localStorage and fictional sample data. It is not production-ready and should not be used for real sensitive incident data without authentication, encrypted storage, backend-enforced access controls, audit logging, secure backend integrations, backups, and security/legal review.
-      </div>
-
       <section class="section active" id="dashboard"></section>
       <section class="section" id="incidents"></section>
       <section class="section" id="artifacts"></section>
@@ -420,6 +797,16 @@
       <section class="section" id="users"></section>
       <section class="section" id="audit"></section>
     </main>
+  </div>
+
+  <div class="modal-backdrop" id="disclaimerModal" role="dialog" aria-modal="true" aria-labelledby="disclaimerTitle" aria-hidden="true">
+    <div class="modal">
+      <div class="modal-header">
+        <h2 id="disclaimerTitle">Prototype Disclaimer</h2>
+        <button class="modal-close" type="button" id="closeDisclaimer" aria-label="Close disclaimer">Close</button>
+      </div>
+      <p>This is an educational prototype using fictional sample data. It is not production-ready and should not be used for real sensitive incident data without proper security controls.</p>
+    </div>
   </div>
 
   <script>
@@ -437,6 +824,50 @@
       ["connectors", "Connectors"],
       ["users", "Users / Roles"],
       ["audit", "Audit Log"]
+    ];
+
+    const navGroups = [
+      { label: "Dashboard", section: "dashboard" },
+      {
+        label: "Cases",
+        children: [
+          { label: "Incidents", section: "incidents" },
+          { label: "Evidence / Artifacts", section: "artifacts" }
+        ]
+      },
+      {
+        label: "Observables",
+        children: [
+          { label: "Indicators", section: "indicators" },
+          { label: "Assets", section: "assets" },
+          { label: "Entities", section: "entities" }
+        ]
+      },
+      {
+        label: "Response",
+        children: [
+          { label: "Timeline", section: "timeline" },
+          { label: "Response Actions", section: "actions" },
+          { label: "ATT&CK Mapping", section: "attack" }
+        ]
+      },
+      { label: "Reports", section: "reports" },
+      { label: "Connectors", section: "connectors" },
+      {
+        label: "Admin",
+        children: [
+          { label: "Users / Roles", section: "users" },
+          { label: "Audit Log", section: "audit" }
+        ]
+      }
+    ];
+
+    const roleOptions = [
+      { label: "View as Admin", role: "Admin", theme: "role-admin" },
+      { label: "View as Manager", role: "Incident Manager", theme: "role-manager" },
+      { label: "View as Analyst", role: "Analyst", theme: "role-analyst" },
+      { label: "View as Auditor", role: "Auditor", theme: "role-auditor" },
+      { label: "View as User", role: "User", theme: "role-user" }
     ];
 
     const users = [
@@ -562,8 +993,13 @@
       { id: "AUD-003", timestamp: "2026-06-16 08:20", user: "Connector Import Bot", role: "Connector Service Account", action: "Mock connector import performed", object: "INC-2026-003", source: "Mock Connector" }
     ];
 
+    const appShell = document.getElementById("appShell");
+    const appHeader = document.querySelector("header");
     const nav = document.getElementById("nav");
     const viewerSelect = document.getElementById("viewerSelect");
+    let openDisclaimer = null;
+    const closeDisclaimer = document.getElementById("closeDisclaimer");
+    const disclaimerModal = document.getElementById("disclaimerModal");
 
     function escapeHtml(value) {
       return String(value || "")
@@ -845,40 +1281,120 @@
     }
 
     function renderNav() {
-      nav.innerHTML = sections.map(([id, label], index) => `
-        <button class="nav-button ${index === 0 ? "active" : ""}" type="button" data-section="${id}">${label}</button>
-      `).join("");
+      nav.innerHTML = `
+        <div class="nav-menu">
+          <button class="nav-toggle" type="button" id="navToggle" aria-label="Hide navigation panel" aria-expanded="true" title="Hide navigation panel">&lt;</button>
+          ${navGroups.map((group, index) => {
+          const section = group.section || group.children[0].section;
+          const hasChildren = Array.isArray(group.children);
+          return `
+            <div class="nav-group">
+              <button class="nav-button ${hasChildren ? "has-children" : ""} ${index === 0 ? "active" : ""}" type="button" data-section="${section}">
+                ${escapeHtml(group.label)}
+              </button>
+              ${hasChildren ? `
+                <div class="nav-submenu">
+                  ${group.children.map((child) => `
+                    <button class="nav-subitem" type="button" data-section="${escapeHtml(child.section)}">${escapeHtml(child.label)}</button>
+                  `).join("")}
+                </div>
+              ` : ""}
+            </div>
+          `;
+          }).join("")}
+        </div>
+        <footer class="app-footer">
+          <button class="footer-link" type="button" id="openDisclaimer">Prototype Disclaimer</button>
+          <p class="powered-by">Powered by CyberBilly</p>
+        </footer>
+      `;
 
       nav.addEventListener("click", (event) => {
-        const button = event.target.closest(".nav-button");
+        const toggle = event.target.closest("#navToggle");
+        if (toggle) {
+          const isCollapsed = appShell.classList.toggle("nav-collapsed");
+          toggle.setAttribute("aria-expanded", String(!isCollapsed));
+          toggle.setAttribute("aria-label", isCollapsed ? "Show navigation panel" : "Hide navigation panel");
+          toggle.setAttribute("title", isCollapsed ? "Show navigation panel" : "Hide navigation panel");
+          toggle.textContent = isCollapsed ? ">" : "<";
+          return;
+        }
+
+        const button = event.target.closest(".nav-button, .nav-subitem");
         if (!button) return;
 
-        document.querySelectorAll(".nav-button").forEach((item) => item.classList.remove("active"));
+        document.querySelectorAll(".nav-button, .nav-subitem").forEach((item) => item.classList.remove("active"));
         document.querySelectorAll(".section").forEach((item) => item.classList.remove("active"));
         button.classList.add("active");
+        const groupButton = button.closest(".nav-group")?.querySelector(".nav-button");
+        if (button.classList.contains("nav-subitem") && groupButton) {
+          groupButton.classList.add("active");
+        }
         document.getElementById(button.dataset.section).classList.add("active");
       });
     }
 
     function renderViewer() {
-      viewerSelect.innerHTML = users.map((user) => `<option>${escapeHtml(user.name)} - ${escapeHtml(user.role)}</option>`).join("");
+      viewerSelect.innerHTML = roleOptions.map((option) => `<option value="${escapeHtml(option.role)}">${escapeHtml(option.label)}</option>`).join("");
+
+      function applyRoleTheme() {
+        const selected = roleOptions.find((option) => option.role === viewerSelect.value) || roleOptions[0];
+        appHeader.classList.remove(...roleOptions.map((option) => option.theme));
+        appHeader.classList.add(selected.theme);
+        return selected;
+      }
+
       viewerSelect.addEventListener("change", () => {
+        const selected = applyRoleTheme();
         auditLog.unshift({
           id: `AUD-${String(auditLog.length + 1).padStart(3, "0")}`,
           timestamp: "Demo session",
-          user: viewerSelect.value.split(" - ")[0],
-          role: viewerSelect.value.split(" - ")[1],
+          user: selected.label,
+          role: selected.role,
           action: "User/role switched in demo mode",
           object: "Prototype view",
           source: "System"
         });
         renderAudit();
       });
+
+      applyRoleTheme();
+    }
+
+    function showDisclaimer() {
+      disclaimerModal.classList.add("open");
+      disclaimerModal.setAttribute("aria-hidden", "false");
+      closeDisclaimer.focus();
+    }
+
+    function hideDisclaimer() {
+      disclaimerModal.classList.remove("open");
+      disclaimerModal.setAttribute("aria-hidden", "true");
+      if (openDisclaimer) {
+        openDisclaimer.focus();
+      }
+    }
+
+    function bindDisclaimerModal() {
+      openDisclaimer = document.getElementById("openDisclaimer");
+      openDisclaimer.addEventListener("click", showDisclaimer);
+      closeDisclaimer.addEventListener("click", hideDisclaimer);
+      disclaimerModal.addEventListener("click", (event) => {
+        if (event.target === disclaimerModal) {
+          hideDisclaimer();
+        }
+      });
+      document.addEventListener("keydown", (event) => {
+        if (event.key === "Escape" && disclaimerModal.classList.contains("open")) {
+          hideDisclaimer();
+        }
+      });
     }
 
     function renderAll() {
       renderNav();
       renderViewer();
+      bindDisclaimerModal();
       renderDashboard();
       renderIncidents();
       renderArtifacts();
