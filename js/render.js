@@ -50,12 +50,18 @@ function renderIncidentTable(includeActions = false) {
         `);
       }
 
-      return row(cells);
+      return row(cells, `class="clickable-row" tabindex="0" data-select-incident="${escapeHtml(incident.id)}"`);
     })
   );
 }
 
 function renderIncidents() {
+  const selectedIncident = incidents.find((incident) => incident.id === selectedState.incidentId);
+  if (selectedIncident) {
+    document.getElementById("incidents").innerHTML = renderIncidentDetail(selectedIncident);
+    return;
+  }
+
   document.getElementById("incidents").innerHTML = `
     ${sectionHeader("Incidents", "Fictional sample incidents with internal response terminology.")}
     ${storageNotice ? `<div class="notice warning">${escapeHtml(storageNotice)}</div>` : ""}
@@ -67,12 +73,117 @@ function renderIncidents() {
   `;
 }
 
+function renderIncidentDetail(incident) {
+  const links = getIncidentLinks(incident.id);
+  return `
+    ${sectionHeader("Incident Detail", "Linked records are filtered by Incident ID.")}
+    <div class="card detail-panel">
+      <div class="detail-header">
+        <div>
+          <h3>${escapeHtml(incident.id)} - ${escapeHtml(incident.title)}</h3>
+          <div class="meta">${pill(incident.severity)} ${pill(incident.status)} <span>${escapeHtml(incident.type)}</span></div>
+        </div>
+        <div>
+          <button class="secondary-button" type="button" data-back-list="incidents">Back to Incidents</button>
+          <button class="table-action" type="button" data-edit-incident="${escapeHtml(incident.id)}">Edit</button>
+          <button class="table-action danger-button" type="button" data-delete-incident="${escapeHtml(incident.id)}">Delete</button>
+        </div>
+      </div>
+      <div class="detail-grid">
+        ${detailField("Owner", incident.owner)}
+        ${detailField("Opened", incident.opened)}
+        ${detailField("Closed", incident.closed)}
+        ${detailField("Assigned users", incident.assignedUsers)}
+        ${detailField("Assigned team", incident.assignedTeam)}
+        ${detailField("Detection source", incident.detectionSource)}
+        ${detailField("Visibility", incident.visibility)}
+        ${detailField("Shared with users", incident.sharedWithUsers)}
+        ${detailField("Business impact", incident.businessImpact)}
+        ${detailField("Executive summary", incident.executiveSummary)}
+        ${detailField("Technical summary", incident.technicalSummary)}
+        ${detailField("Suspected root cause", incident.suspectedRootCause)}
+        ${detailField("Lessons learned", incident.lessonsLearned)}
+      </div>
+      <div class="detail-section">
+        <h4>Evidence / Artifacts</h4>
+        ${smallTable(["ID", "Type", "Source", "Description"], links.artifacts.map((item) => row([
+          escapeHtml(item.id), escapeHtml(item.type), escapeHtml(item.source), escapeHtml(item.description)
+        ], `class="clickable-row" tabindex="0" data-select-artifact="${escapeHtml(item.id)}"`)), "No linked artifacts documented.")}
+      </div>
+      <div class="detail-section">
+        <h4>Response Actions</h4>
+        ${smallTable(["ID", "Title", "Owner", "Priority", "Status"], links.actions.map((item) => row([
+          escapeHtml(item.id), escapeHtml(item.title), escapeHtml(item.owner), pill(item.priority), escapeHtml(item.status)
+        ], `class="clickable-row" tabindex="0" data-select-action="${escapeHtml(item.id)}"`)), "No response actions documented.")}
+      </div>
+      <div class="detail-section">
+        <h4>Timeline Events</h4>
+        ${smallTable(["ID", "Timestamp", "Type", "Description"], links.timeline.map((item) => row([
+          escapeHtml(item.id), escapeHtml(item.timestamp), escapeHtml(item.type), escapeHtml(item.description)
+        ], `class="clickable-row" tabindex="0" data-select-timeline="${escapeHtml(item.id)}"`)), "No timeline events documented.")}
+      </div>
+      <div class="detail-section">
+        <h4>Indicators</h4>
+        ${smallTable(["ID", "Type", "Value", "Status"], links.indicators.map((item) => row([
+          escapeHtml(item.id), escapeHtml(item.type), escapeHtml(item.value), escapeHtml(item.status)
+        ])), "No indicators documented.")}
+      </div>
+      <div class="detail-section">
+        <h4>Assets</h4>
+        ${smallTable(["ID", "Hostname", "Type", "Status"], links.assets.map((item) => row([
+          escapeHtml(item.id), escapeHtml(item.hostname), escapeHtml(item.type), escapeHtml(item.status)
+        ])), "No assets documented.")}
+      </div>
+      <div class="detail-section">
+        <h4>Entities</h4>
+        ${smallTable(["ID", "Name / Identifier", "Type", "Role"], links.entities.map((item) => row([
+          escapeHtml(item.id), escapeHtml(item.name), escapeHtml(item.type), escapeHtml(item.role)
+        ])), "No entities documented.")}
+      </div>
+      <div class="detail-section">
+        <h4>ATT&CK Mappings</h4>
+        ${smallTable(["ID", "Tactic", "Technique", "Status"], links.attackMappings.map((item) => row([
+          escapeHtml(item.id), escapeHtml(item.tactic), escapeHtml(item.technique), escapeHtml(item.status)
+        ])), "No ATT&CK mapping documented.")}
+      </div>
+    </div>
+  `;
+}
+
 function renderArtifacts() {
+  const selectedArtifact = artifacts.find((item) => item.id === selectedState.artifactId);
+  if (selectedArtifact) {
+    document.getElementById("artifacts").innerHTML = renderArtifactDetail(selectedArtifact);
+    return;
+  }
+
   document.getElementById("artifacts").innerHTML = `
     ${sectionHeader("Evidence / Artifacts", "Internal incident artifacts such as alerts, tickets, headers, screenshots, and references.")}
     ${table(["ID", "Incident", "Type", "Source Tool", "Description", "Collected By"], artifacts.map((item) => row([
       escapeHtml(item.id), escapeHtml(item.incidentId), escapeHtml(item.type), escapeHtml(item.source), escapeHtml(item.description), escapeHtml(item.collectedBy)
-    ])))}
+    ], `class="clickable-row" tabindex="0" data-select-artifact="${escapeHtml(item.id)}"`)))}
+  `;
+}
+
+function renderArtifactDetail(item) {
+  return `
+    ${sectionHeader("Artifact Detail", "Artifact details are linked back to the incident by Incident ID.")}
+    <div class="card detail-panel">
+      <div class="detail-header">
+        <div>
+          <h3>${escapeHtml(item.id)} - ${escapeHtml(item.type)}</h3>
+          <div class="meta"><span>Incident ${escapeHtml(item.incidentId)}</span></div>
+        </div>
+        <button class="secondary-button" type="button" data-back-list="artifacts">Back to Artifacts</button>
+      </div>
+      <div class="detail-grid">
+        ${detailField("Incident ID", item.incidentId)}
+        ${detailField("Type", item.type)}
+        ${detailField("Source tool", item.source)}
+        ${detailField("Description", item.description)}
+        ${detailField("Collected by", item.collectedBy)}
+      </div>
+    </div>
   `;
 }
 
@@ -104,20 +215,80 @@ function renderEntities() {
 }
 
 function renderTimeline() {
+  const selectedEvent = timeline.find((item) => item.id === selectedState.timelineId);
+  if (selectedEvent) {
+    document.getElementById("timeline").innerHTML = renderTimelineDetail(selectedEvent);
+    return;
+  }
+
   document.getElementById("timeline").innerHTML = `
     ${sectionHeader("Timeline", "Chronological incident activity reconstructed from documented fictional data.")}
     ${table(["ID", "Incident", "Timestamp", "Type", "Description", "Source"], timeline.map((item) => row([
       escapeHtml(item.id), escapeHtml(item.incidentId), escapeHtml(item.timestamp), escapeHtml(item.type), escapeHtml(item.description), escapeHtml(item.source)
-    ])))}
+    ], `class="clickable-row" tabindex="0" data-select-timeline="${escapeHtml(item.id)}"`)))}
+  `;
+}
+
+function renderTimelineDetail(item) {
+  return `
+    ${sectionHeader("Timeline Event Detail", "Timeline events are linked back to the incident by Incident ID.")}
+    <div class="card detail-panel">
+      <div class="detail-header">
+        <div>
+          <h3>${escapeHtml(item.id)} - ${escapeHtml(item.type)}</h3>
+          <div class="meta"><span>${escapeHtml(item.timestamp)}</span><span>Incident ${escapeHtml(item.incidentId)}</span></div>
+        </div>
+        <button class="secondary-button" type="button" data-back-list="timeline">Back to Timeline</button>
+      </div>
+      <div class="detail-grid">
+        ${detailField("Incident ID", item.incidentId)}
+        ${detailField("Timestamp", item.timestamp)}
+        ${detailField("Type", item.type)}
+        ${detailField("Description", item.description)}
+        ${detailField("Source", item.source)}
+      </div>
+    </div>
   `;
 }
 
 function renderActions() {
+  const selectedAction = actions.find((item) => item.id === selectedState.actionId);
+  if (selectedAction) {
+    document.getElementById("actions").innerHTML = renderActionDetail(selectedAction);
+    return;
+  }
+
   document.getElementById("actions").innerHTML = `
     ${sectionHeader("Response Actions", "Tracked work items for containment, eradication, recovery, and follow-up.")}
     ${table(["ID", "Incident", "Title", "Owner", "Priority", "Status", "Due"], actions.map((item) => row([
       escapeHtml(item.id), escapeHtml(item.incidentId), escapeHtml(item.title), escapeHtml(item.owner), pill(item.priority), pill(item.status), escapeHtml(item.due)
-    ])))}
+    ], `class="clickable-row" tabindex="0" data-select-action="${escapeHtml(item.id)}"`)))}
+  `;
+}
+
+function renderActionDetail(item) {
+  return `
+    ${sectionHeader("Response Action Detail", "Response actions are linked back to the incident by Incident ID.")}
+    <div class="card detail-panel">
+      <div class="detail-header">
+        <div>
+          <h3>${escapeHtml(item.id)} - ${escapeHtml(item.title)}</h3>
+          <div class="meta">${pill(item.priority)} ${pill(item.status)} <span>Incident ${escapeHtml(item.incidentId)}</span></div>
+        </div>
+        <button class="secondary-button" type="button" data-back-list="actions">Back to Response Actions</button>
+      </div>
+      <div class="detail-grid">
+        ${detailField("Incident ID", item.incidentId)}
+        ${detailField("Title", item.title)}
+        ${detailField("Owner", item.owner)}
+        ${detailField("Priority", item.priority)}
+        ${detailField("Status", item.status)}
+        ${detailField("Due date", item.due)}
+        ${detailField("Description", item.description)}
+        ${detailField("Completed date", item.completed)}
+        ${detailField("Notes", item.notes)}
+      </div>
+    </div>
   `;
 }
 
@@ -196,6 +367,7 @@ function renderReports() {
 }
 
 function renderDataViews() {
+  clearStaleSelections();
   renderDashboard();
   renderIncidents();
   renderArtifacts();

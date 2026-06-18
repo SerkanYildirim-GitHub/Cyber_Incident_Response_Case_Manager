@@ -92,6 +92,9 @@ function resetDemoData() {
   appData = cloneData(sampleData);
   syncDataRefs(appData);
   storageNotice = "";
+  if (typeof clearAllSelections === "function") {
+    clearAllSelections();
+  }
   addAuditEntry("Demo data reset", "Local demo data", "Reset to fictional sample data.");
   saveAppData();
   renderDataViews();

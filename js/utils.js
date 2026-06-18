@@ -59,7 +59,44 @@ function table(headers, rows) {
   `;
 }
 
-function row(cells) {
-  return `<tr>${cells.map((cell) => `<td>${cell}</td>`).join("")}</tr>`;
+function row(cells, attrs = "") {
+  return `<tr ${attrs}>${cells.map((cell) => `<td>${cell}</td>`).join("")}</tr>`;
 }
 
+function getIncidentLinks(incidentId) {
+  return {
+    artifacts: artifacts.filter((item) => item.incidentId === incidentId),
+    actions: actions.filter((item) => item.incidentId === incidentId),
+    timeline: timeline.filter((item) => item.incidentId === incidentId),
+    indicators: indicators.filter((item) => item.incidentId === incidentId),
+    assets: assets.filter((item) => item.incidentId === incidentId),
+    entities: entities.filter((item) => item.incidentId === incidentId),
+    attackMappings: attackMappings.filter((item) => item.incidentId === incidentId)
+  };
+}
+
+function linkedRecordCount(incidentId) {
+  const links = getIncidentLinks(incidentId);
+  return Object.values(links).reduce((count, records) => count + records.length, 0);
+}
+
+function detailField(label, value) {
+  return `
+    <div class="detail-field">
+      <span>${escapeHtml(label)}</span>
+      <strong>${escapeHtml(documented(value))}</strong>
+    </div>
+  `;
+}
+
+function emptyState(message) {
+  return `<p class="empty-state">${escapeHtml(message)}</p>`;
+}
+
+function smallTable(headers, rows, emptyMessage) {
+  if (!rows.length) {
+    return emptyState(emptyMessage);
+  }
+
+  return table(headers, rows);
+}
