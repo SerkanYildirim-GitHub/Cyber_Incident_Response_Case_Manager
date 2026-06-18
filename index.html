@@ -1,0 +1,900 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Cyber Incident Response Case Manager</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --bg: #f4f6f8;
+      --surface: #ffffff;
+      --surface-soft: #eef3f7;
+      --line: #d7dee8;
+      --text: #17202a;
+      --muted: #637083;
+      --accent: #1b6b8f;
+      --accent-dark: #124f6a;
+      --ok: #0f766e;
+      --warn: #9a5b00;
+      --danger: #b42318;
+      --critical: #7f1d1d;
+      --shadow: 0 14px 34px rgba(28, 39, 49, 0.08);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      font-family: Arial, Helvetica, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+    }
+
+    button,
+    select {
+      font: inherit;
+    }
+
+    .app {
+      min-height: 100vh;
+      display: grid;
+      grid-template-columns: 260px minmax(0, 1fr);
+      grid-template-rows: auto 1fr;
+    }
+
+    header {
+      grid-column: 1 / -1;
+      background: #0f1720;
+      color: #fff;
+      border-bottom: 4px solid var(--accent);
+      padding: 18px 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 18px;
+    }
+
+    .brand h1 {
+      margin: 0 0 4px;
+      font-size: 1.45rem;
+      letter-spacing: 0;
+    }
+
+    .brand p {
+      margin: 0;
+      color: #cbd5e1;
+      font-size: 0.92rem;
+      max-width: 820px;
+      line-height: 1.4;
+    }
+
+    .viewer {
+      display: grid;
+      gap: 6px;
+      min-width: 250px;
+    }
+
+    .viewer label {
+      color: #cbd5e1;
+      font-size: 0.78rem;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+
+    .viewer select {
+      width: 100%;
+      border: 1px solid #475569;
+      background: #17212d;
+      color: #fff;
+      border-radius: 6px;
+      padding: 10px 12px;
+    }
+
+    nav {
+      background: #182230;
+      padding: 14px;
+      border-right: 1px solid #111827;
+    }
+
+    .nav-button {
+      width: 100%;
+      border: 0;
+      background: transparent;
+      color: #d8e0ea;
+      text-align: left;
+      padding: 11px 12px;
+      border-radius: 6px;
+      cursor: pointer;
+      margin-bottom: 4px;
+    }
+
+    .nav-button:hover,
+    .nav-button.active {
+      background: #263545;
+      color: #fff;
+    }
+
+    main {
+      padding: 22px;
+      overflow: auto;
+    }
+
+    .disclaimer {
+      background: #fff7ed;
+      border: 1px solid #fed7aa;
+      border-left: 5px solid var(--warn);
+      padding: 14px 16px;
+      border-radius: 6px;
+      margin-bottom: 18px;
+      line-height: 1.45;
+    }
+
+    .disclaimer strong {
+      color: #7c2d12;
+    }
+
+    .section {
+      display: none;
+    }
+
+    .section.active {
+      display: block;
+    }
+
+    .section-title {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 14px;
+      margin-bottom: 16px;
+    }
+
+    .section-title h2 {
+      margin: 0 0 4px;
+      font-size: 1.28rem;
+    }
+
+    .section-title p {
+      margin: 0;
+      color: var(--muted);
+      line-height: 1.4;
+    }
+
+    .grid {
+      display: grid;
+      gap: 14px;
+    }
+
+    .metrics {
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      margin-bottom: 16px;
+    }
+
+    .two-col {
+      grid-template-columns: minmax(0, 1.25fr) minmax(320px, 0.75fr);
+    }
+
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      box-shadow: var(--shadow);
+      padding: 16px;
+    }
+
+    .metric .label {
+      color: var(--muted);
+      font-size: 0.82rem;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+    }
+
+    .metric .value {
+      font-size: 2rem;
+      font-weight: 700;
+      margin-top: 8px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      background: var(--surface);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      overflow: hidden;
+      box-shadow: var(--shadow);
+    }
+
+    th,
+    td {
+      text-align: left;
+      padding: 11px 12px;
+      border-bottom: 1px solid var(--line);
+      vertical-align: top;
+      font-size: 0.92rem;
+      line-height: 1.35;
+    }
+
+    th {
+      background: var(--surface-soft);
+      color: #334155;
+      font-size: 0.78rem;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+    }
+
+    tr:last-child td {
+      border-bottom: 0;
+    }
+
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      min-height: 24px;
+      border-radius: 999px;
+      padding: 3px 9px;
+      font-size: 0.78rem;
+      font-weight: 700;
+      background: #e2e8f0;
+      color: #263545;
+      white-space: nowrap;
+    }
+
+    .pill.high {
+      background: #fee2e2;
+      color: #991b1b;
+    }
+
+    .pill.critical {
+      background: #fecaca;
+      color: var(--critical);
+    }
+
+    .pill.medium {
+      background: #fef3c7;
+      color: #854d0e;
+    }
+
+    .pill.low,
+    .pill.done {
+      background: #dcfce7;
+      color: #166534;
+    }
+
+    .pill.mock {
+      background: #dbeafe;
+      color: #1e3a8a;
+    }
+
+    .list {
+      display: grid;
+      gap: 10px;
+    }
+
+    .list-item {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 13px;
+      background: var(--surface);
+    }
+
+    .list-item h3 {
+      margin: 0 0 7px;
+      font-size: 1rem;
+    }
+
+    .meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      color: var(--muted);
+      font-size: 0.86rem;
+    }
+
+    .connector-grid {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+
+    .connector-card {
+      min-height: 170px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+    }
+
+    .connector-card p {
+      color: var(--muted);
+      line-height: 1.45;
+    }
+
+    .report-tools {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+
+    .report-tools select,
+    .report-tools button {
+      border: 1px solid var(--line);
+      background: #fff;
+      color: var(--text);
+      border-radius: 6px;
+      padding: 9px 11px;
+    }
+
+    .report-tools button {
+      background: var(--accent);
+      color: #fff;
+      border-color: var(--accent-dark);
+      cursor: pointer;
+    }
+
+    .report-preview {
+      white-space: pre-wrap;
+      line-height: 1.5;
+      font-family: Consolas, "Courier New", monospace;
+      background: #fbfcfe;
+      color: #111827;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 16px;
+      min-height: 360px;
+    }
+
+    .notice {
+      background: #eef6ff;
+      border: 1px solid #bfdbfe;
+      border-left: 5px solid var(--accent);
+      padding: 13px 15px;
+      border-radius: 6px;
+      color: #1e3a5f;
+      line-height: 1.45;
+    }
+
+    @media (max-width: 980px) {
+      .app {
+        grid-template-columns: 1fr;
+      }
+
+      header {
+        align-items: stretch;
+        flex-direction: column;
+      }
+
+      nav {
+        display: flex;
+        overflow-x: auto;
+        border-right: 0;
+        border-bottom: 1px solid #111827;
+      }
+
+      .nav-button {
+        width: auto;
+        white-space: nowrap;
+      }
+
+      .metrics,
+      .two-col,
+      .connector-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <header>
+      <div class="brand">
+        <h1>Cyber Incident Response Case Manager</h1>
+        <p>Local-first educational prototype for organizing internal cyber incidents, artifacts, indicators, timelines, response actions, ATT&amp;CK mappings, and incident reports.</p>
+      </div>
+      <div class="viewer">
+        <label for="viewerSelect">Viewing as demo user</label>
+        <select id="viewerSelect"></select>
+      </div>
+    </header>
+
+    <nav id="nav"></nav>
+
+    <main>
+      <div class="disclaimer">
+        <strong>Educational prototype:</strong>
+        This is an educational prototype using browser localStorage and fictional sample data. It is not production-ready and should not be used for real sensitive incident data without authentication, encrypted storage, backend-enforced access controls, audit logging, secure backend integrations, backups, and security/legal review.
+      </div>
+
+      <section class="section active" id="dashboard"></section>
+      <section class="section" id="incidents"></section>
+      <section class="section" id="artifacts"></section>
+      <section class="section" id="indicators"></section>
+      <section class="section" id="assets"></section>
+      <section class="section" id="entities"></section>
+      <section class="section" id="timeline"></section>
+      <section class="section" id="actions"></section>
+      <section class="section" id="attack"></section>
+      <section class="section" id="reports"></section>
+      <section class="section" id="connectors"></section>
+      <section class="section" id="users"></section>
+      <section class="section" id="audit"></section>
+    </main>
+  </div>
+
+  <script>
+    const sections = [
+      ["dashboard", "Dashboard"],
+      ["incidents", "Incidents"],
+      ["artifacts", "Evidence / Artifacts"],
+      ["indicators", "Indicators"],
+      ["assets", "Assets"],
+      ["entities", "Entities"],
+      ["timeline", "Timeline"],
+      ["actions", "Response Actions"],
+      ["attack", "ATT&CK Mapping"],
+      ["reports", "Reports"],
+      ["connectors", "Connectors"],
+      ["users", "Users / Roles"],
+      ["audit", "Audit Log"]
+    ];
+
+    const users = [
+      { name: "Alex Admin", role: "Admin" },
+      { name: "Morgan Manager", role: "Incident Manager" },
+      { name: "Riley Analyst", role: "Analyst" },
+      { name: "Jordan Viewer", role: "Viewer" },
+      { name: "Casey Auditor", role: "Auditor" },
+      { name: "Connector Import Bot", role: "Connector Service Account" }
+    ];
+
+    const incidents = [
+      {
+        id: "INC-2026-001",
+        title: "Phishing campaign targeting finance inboxes",
+        severity: "High",
+        status: "Investigating",
+        type: "Phishing",
+        owner: "Riley Analyst",
+        assignedTeam: "Security Operations",
+        detectionSource: "Email security alert",
+        opened: "2026-06-14 09:12",
+        closed: "",
+        businessImpact: "Several users reported credential-harvesting emails. No confirmed account takeover documented.",
+        executiveSummary: "A simulated phishing campaign was reported by finance users at Contoso Retail.",
+        technicalSummary: "Messages contained a lookalike invoice link and suspicious sender domain.",
+        suspectedRootCause: "",
+        lessonsLearned: "Not documented",
+        recommendations: "Continue user reporting reminders and verify mail filtering rules."
+      },
+      {
+        id: "INC-2026-002",
+        title: "Endpoint malware alert on lab workstation",
+        severity: "Critical",
+        status: "Containment",
+        type: "Malware",
+        owner: "Morgan Manager",
+        assignedTeam: "Endpoint Response",
+        detectionSource: "Mock EDR alert",
+        opened: "2026-06-15 13:41",
+        closed: "",
+        businessImpact: "One fictional workstation isolated in the demo environment.",
+        executiveSummary: "A mock EDR alert identified suspicious PowerShell execution on a Northstar Labs workstation.",
+        technicalSummary: "The alert referenced encoded PowerShell and a staged file hash.",
+        suspectedRootCause: "Not documented",
+        lessonsLearned: "",
+        recommendations: ""
+      },
+      {
+        id: "INC-2026-003",
+        title: "PRTG network alert for branch router",
+        severity: "Medium",
+        status: "Triage",
+        type: "Network Alert",
+        owner: "Riley Analyst",
+        assignedTeam: "Infrastructure",
+        detectionSource: "Mock PRTG alert",
+        opened: "2026-06-16 08:20",
+        closed: "",
+        businessImpact: "",
+        executiveSummary: "A fictional branch router generated repeated availability alerts.",
+        technicalSummary: "",
+        suspectedRootCause: "",
+        lessonsLearned: "",
+        recommendations: ""
+      }
+    ];
+
+    const artifacts = [
+      { id: "ART-001", incidentId: "INC-2026-001", type: "Email Header", source: "Mock email security gateway", description: "Fictional phishing message header summary", collectedBy: "Riley Analyst" },
+      { id: "ART-002", incidentId: "INC-2026-002", type: "EDR Alert", source: "Mock EDR", description: "Suspicious encoded PowerShell execution alert", collectedBy: "Morgan Manager" },
+      { id: "ART-003", incidentId: "INC-2026-003", type: "PRTG Alert", source: "Mock PRTG", description: "Repeated branch router availability alert", collectedBy: "Riley Analyst" }
+    ];
+
+    const indicators = [
+      { id: "IOC-001", incidentId: "INC-2026-001", type: "Domain", value: "invoice-demo.example", confidence: "Medium", status: "Investigating" },
+      { id: "IOC-002", incidentId: "INC-2026-001", type: "URL", value: "https://portal.example.invalid/invoice", confidence: "High", status: "Blocked" },
+      { id: "IOC-003", incidentId: "INC-2026-002", type: "File Hash", value: "demo-hash-7a8b9c", confidence: "High", status: "Malicious" }
+    ];
+
+    const assets = [
+      { id: "AST-001", incidentId: "INC-2026-001", hostname: "FIN-LAPTOP-07", type: "Workstation", owner: "Fictional Finance User", criticality: "Medium", status: "Under review" },
+      { id: "AST-002", incidentId: "INC-2026-002", hostname: "LAB-WS-14", type: "Workstation", owner: "Northstar Labs Demo User", criticality: "High", status: "Isolated" },
+      { id: "AST-003", incidentId: "INC-2026-003", hostname: "BRANCH-RTR-02", type: "Network Device", owner: "Infrastructure Team", criticality: "Medium", status: "Monitoring" }
+    ];
+
+    const entities = [
+      { id: "ENT-001", incidentId: "INC-2026-001", name: "finance.reporter@example.invalid", type: "User", role: "Reporter", department: "Finance" },
+      { id: "ENT-002", incidentId: "INC-2026-001", name: "billing-alert@example.invalid", type: "External Sender", role: "Sender", department: "External" },
+      { id: "ENT-003", incidentId: "INC-2026-002", name: "Northstar Labs Demo User", type: "User", role: "Affected user", department: "Research" }
+    ];
+
+    const timeline = [
+      { id: "EVT-001", incidentId: "INC-2026-001", timestamp: "2026-06-14 09:12", type: "Detection", description: "Finance user reported suspicious invoice email.", source: "User Report" },
+      { id: "EVT-002", incidentId: "INC-2026-001", timestamp: "2026-06-14 09:36", type: "Containment", description: "Demo URL indicator marked blocked.", source: "Manual" },
+      { id: "EVT-003", incidentId: "INC-2026-002", timestamp: "2026-06-15 13:41", type: "Detection", description: "Mock EDR alert received for encoded PowerShell.", source: "Mock Connector" },
+      { id: "EVT-004", incidentId: "INC-2026-003", timestamp: "2026-06-16 08:20", type: "Connector Import", description: "Mock PRTG alert imported.", source: "Mock Connector" }
+    ];
+
+    const actions = [
+      { id: "ACT-001", incidentId: "INC-2026-001", title: "Review reported messages", owner: "Riley Analyst", priority: "High", status: "In Progress", due: "2026-06-18" },
+      { id: "ACT-002", incidentId: "INC-2026-002", title: "Isolate affected workstation", owner: "Morgan Manager", priority: "Critical", status: "Done", due: "2026-06-15" },
+      { id: "ACT-003", incidentId: "INC-2026-003", title: "Validate branch router telemetry", owner: "Riley Analyst", priority: "Medium", status: "Open", due: "2026-06-19" }
+    ];
+
+    const attackMappings = [
+      { id: "MAP-001", incidentId: "INC-2026-001", tactic: "TA0001 - Initial Access", technique: "T1566.002 - Spearphishing Link", confidence: "Medium", status: "Analyst Confirmed", relatedArtifact: "ART-001", notes: "Documented from reported mock email content." },
+      { id: "MAP-002", incidentId: "INC-2026-002", tactic: "TA0002 - Execution", technique: "T1059.001 - PowerShell", confidence: "High", status: "Suggested", relatedArtifact: "ART-002", notes: "Based on mock EDR alert text." }
+    ];
+
+    const connectors = [
+      { name: "Zendesk / Freshservice Ticket", status: "Mock mode", description: "Demo ticket import would create artifacts, timeline events, and reporter entities." },
+      { name: "EDR / XDR Alert", status: "Mock mode", description: "Demo alert import would create artifacts, indicators, affected assets, and response actions." },
+      { name: "Email Security Alert", status: "Mock mode", description: "Demo email import would create sender entities, URL/domain indicators, and timeline entries." },
+      { name: "PRTG Network Alert", status: "Mock mode", description: "Demo alert import would create network artifacts, affected assets, and timeline events." },
+      { name: "Active Directory Lookup", status: "Future", description: "Future backend-only enrichment for users, departments, and groups." },
+      { name: "Microsoft 365 Logs", status: "Future", description: "Future backend-only connector for approved lab or production architecture." }
+    ];
+
+    const auditLog = [
+      { id: "AUD-001", timestamp: "2026-06-14 09:12", user: "Riley Analyst", role: "Analyst", action: "Incident created", object: "INC-2026-001", source: "Manual" },
+      { id: "AUD-002", timestamp: "2026-06-15 13:41", user: "Connector Import Bot", role: "Connector Service Account", action: "Mock connector import performed", object: "INC-2026-002", source: "Mock Connector" },
+      { id: "AUD-003", timestamp: "2026-06-16 08:20", user: "Connector Import Bot", role: "Connector Service Account", action: "Mock connector import performed", object: "INC-2026-003", source: "Mock Connector" }
+    ];
+
+    const nav = document.getElementById("nav");
+    const viewerSelect = document.getElementById("viewerSelect");
+
+    function escapeHtml(value) {
+      return String(value || "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+    }
+
+    function documented(value) {
+      return value && String(value).trim() ? value : "Not documented";
+    }
+
+    function pill(value) {
+      const key = String(value || "").toLowerCase().replace(/\s+/g, "-");
+      return `<span class="pill ${escapeHtml(key)}">${escapeHtml(value)}</span>`;
+    }
+
+    function sectionHeader(title, text) {
+      return `<div class="section-title"><div><h2>${title}</h2><p>${text}</p></div></div>`;
+    }
+
+    function table(headers, rows) {
+      return `
+        <table>
+          <thead><tr>${headers.map((header) => `<th>${header}</th>`).join("")}</tr></thead>
+          <tbody>${rows.join("")}</tbody>
+        </table>
+      `;
+    }
+
+    function row(cells) {
+      return `<tr>${cells.map((cell) => `<td>${cell}</td>`).join("")}</tr>`;
+    }
+
+    function renderDashboard() {
+      const openIncidents = incidents.filter((incident) => !["Closed", "False Positive"].includes(incident.status)).length;
+      const highCritical = incidents.filter((incident) => ["High", "Critical"].includes(incident.severity)).length;
+      const openActions = actions.filter((action) => action.status !== "Done" && action.status !== "Cancelled").length;
+      const mappedIncidents = new Set(attackMappings.map((mapping) => mapping.incidentId)).size;
+
+      document.getElementById("dashboard").innerHTML = `
+        ${sectionHeader("Dashboard", "Current fictional incident response activity for the local prototype.")}
+        <div class="grid metrics">
+          <div class="card metric"><div class="label">Total incidents</div><div class="value">${incidents.length}</div></div>
+          <div class="card metric"><div class="label">Open incidents</div><div class="value">${openIncidents}</div></div>
+          <div class="card metric"><div class="label">High / Critical</div><div class="value">${highCritical}</div></div>
+          <div class="card metric"><div class="label">Open actions</div><div class="value">${openActions}</div></div>
+        </div>
+        <div class="grid two-col">
+          <div>
+            ${renderIncidentTable()}
+          </div>
+          <div class="card">
+            <h3>Prototype Coverage</h3>
+            <p>${mappedIncidents} incidents have documented ATT&amp;CK mappings. ${incidents.length - mappedIncidents} incident has no mapping documented yet.</p>
+            <p class="notice">All records on this page are fictional sample data. Role switching is visual demo behavior only and is not authentication.</p>
+          </div>
+        </div>
+      `;
+    }
+
+    function renderIncidentTable() {
+      return table(
+        ["ID", "Title", "Severity", "Status", "Owner", "Detection Source"],
+        incidents.map((incident) => row([
+          escapeHtml(incident.id),
+          escapeHtml(incident.title),
+          pill(incident.severity),
+          escapeHtml(incident.status),
+          escapeHtml(incident.owner),
+          escapeHtml(incident.detectionSource)
+        ]))
+      );
+    }
+
+    function renderIncidents() {
+      document.getElementById("incidents").innerHTML = `
+        ${sectionHeader("Incidents", "Fictional sample incidents with internal response terminology.")}
+        ${renderIncidentTable()}
+      `;
+    }
+
+    function renderArtifacts() {
+      document.getElementById("artifacts").innerHTML = `
+        ${sectionHeader("Evidence / Artifacts", "Internal incident artifacts such as alerts, tickets, headers, screenshots, and references.")}
+        ${table(["ID", "Incident", "Type", "Source Tool", "Description", "Collected By"], artifacts.map((item) => row([
+          escapeHtml(item.id), escapeHtml(item.incidentId), escapeHtml(item.type), escapeHtml(item.source), escapeHtml(item.description), escapeHtml(item.collectedBy)
+        ])))}
+      `;
+    }
+
+    function renderIndicators() {
+      document.getElementById("indicators").innerHTML = `
+        ${sectionHeader("Indicators", "Demo observables and indicators connected to fictional incidents.")}
+        ${table(["ID", "Incident", "Type", "Value", "Confidence", "Status"], indicators.map((item) => row([
+          escapeHtml(item.id), escapeHtml(item.incidentId), escapeHtml(item.type), escapeHtml(item.value), pill(item.confidence), escapeHtml(item.status)
+        ])))}
+      `;
+    }
+
+    function renderAssets() {
+      document.getElementById("assets").innerHTML = `
+        ${sectionHeader("Assets", "Fictional affected systems, devices, resources, and applications.")}
+        ${table(["ID", "Incident", "Hostname", "Type", "Owner", "Criticality", "Status"], assets.map((item) => row([
+          escapeHtml(item.id), escapeHtml(item.incidentId), escapeHtml(item.hostname), escapeHtml(item.type), escapeHtml(item.owner), pill(item.criticality), escapeHtml(item.status)
+        ])))}
+      `;
+    }
+
+    function renderEntities() {
+      document.getElementById("entities").innerHTML = `
+        ${sectionHeader("Entities", "Fictional users, senders, service accounts, and related entities.")}
+        ${table(["ID", "Incident", "Name / Identifier", "Type", "Role", "Department"], entities.map((item) => row([
+          escapeHtml(item.id), escapeHtml(item.incidentId), escapeHtml(item.name), escapeHtml(item.type), escapeHtml(item.role), escapeHtml(item.department)
+        ])))}
+      `;
+    }
+
+    function renderTimeline() {
+      document.getElementById("timeline").innerHTML = `
+        ${sectionHeader("Timeline", "Chronological incident activity reconstructed from documented fictional data.")}
+        ${table(["ID", "Incident", "Timestamp", "Type", "Description", "Source"], timeline.map((item) => row([
+          escapeHtml(item.id), escapeHtml(item.incidentId), escapeHtml(item.timestamp), escapeHtml(item.type), escapeHtml(item.description), escapeHtml(item.source)
+        ])))}
+      `;
+    }
+
+    function renderActions() {
+      document.getElementById("actions").innerHTML = `
+        ${sectionHeader("Response Actions", "Tracked work items for containment, eradication, recovery, and follow-up.")}
+        ${table(["ID", "Incident", "Title", "Owner", "Priority", "Status", "Due"], actions.map((item) => row([
+          escapeHtml(item.id), escapeHtml(item.incidentId), escapeHtml(item.title), escapeHtml(item.owner), pill(item.priority), pill(item.status), escapeHtml(item.due)
+        ])))}
+      `;
+    }
+
+    function renderAttack() {
+      document.getElementById("attack").innerHTML = `
+        ${sectionHeader("ATT&CK Mapping", "Educational demo mappings. Mappings are documented manually and do not fetch live MITRE data.")}
+        ${table(["ID", "Incident", "Tactic", "Technique", "Confidence", "Status", "Related Artifact", "Notes"], attackMappings.map((item) => row([
+          escapeHtml(item.id), escapeHtml(item.incidentId), escapeHtml(item.tactic), escapeHtml(item.technique), pill(item.confidence), escapeHtml(item.status), escapeHtml(item.relatedArtifact), escapeHtml(item.notes)
+        ])))}
+      `;
+    }
+
+    function renderConnectors() {
+      document.getElementById("connectors").innerHTML = `
+        ${sectionHeader("Connectors", "Mock connector cards only. No real APIs are called and no credentials are used.")}
+        <p class="notice">Real API integrations require a backend service, secure secrets storage, and security review. Do not store API keys in this frontend prototype.</p>
+        <div class="grid connector-grid">
+          ${connectors.map((connector) => `
+            <div class="card connector-card">
+              <div>
+                <h3>${escapeHtml(connector.name)}</h3>
+                <p>${escapeHtml(connector.description)}</p>
+              </div>
+              ${pill(connector.status)}
+            </div>
+          `).join("")}
+        </div>
+      `;
+    }
+
+    function renderUsers() {
+      document.getElementById("users").innerHTML = `
+        ${sectionHeader("Users / Roles", "Simulated demo users only. This is not real authentication or backend-enforced authorization.")}
+        ${table(["Demo User", "Role", "Prototype Note"], users.map((user) => row([
+          escapeHtml(user.name),
+          escapeHtml(user.role),
+          "Frontend-only demo role display"
+        ])))}
+      `;
+    }
+
+    function renderAudit() {
+      document.getElementById("audit").innerHTML = `
+        ${sectionHeader("Audit Log", "Mock audit entries showing the intended future audit model.")}
+        ${table(["ID", "Timestamp", "User", "Role", "Action", "Object", "Source"], auditLog.map((item) => row([
+          escapeHtml(item.id), escapeHtml(item.timestamp), escapeHtml(item.user), escapeHtml(item.role), escapeHtml(item.action), escapeHtml(item.object), escapeHtml(item.source)
+        ])))}
+      `;
+    }
+
+    function buildReport(incidentId) {
+      const incident = incidents.find((item) => item.id === incidentId) || incidents[0];
+      const incidentArtifacts = artifacts.filter((item) => item.incidentId === incident.id);
+      const incidentIndicators = indicators.filter((item) => item.incidentId === incident.id);
+      const incidentAssets = assets.filter((item) => item.incidentId === incident.id);
+      const incidentEntities = entities.filter((item) => item.incidentId === incident.id);
+      const incidentTimeline = timeline.filter((item) => item.incidentId === incident.id);
+      const incidentActions = actions.filter((item) => item.incidentId === incident.id);
+      const incidentMappings = attackMappings.filter((item) => item.incidentId === incident.id);
+
+      const lines = [
+        `Incident Report: ${documented(incident.title)}`,
+        "",
+        `Incident ID: ${documented(incident.id)}`,
+        `Severity: ${documented(incident.severity)}`,
+        `Status: ${documented(incident.status)}`,
+        `Incident Type: ${documented(incident.type)}`,
+        `Owner: ${documented(incident.owner)}`,
+        `Assigned Team: ${documented(incident.assignedTeam)}`,
+        `Detection Source: ${documented(incident.detectionSource)}`,
+        `Opened: ${documented(incident.opened)}`,
+        `Closed: ${documented(incident.closed)}`,
+        "",
+        "Executive Summary",
+        documented(incident.executiveSummary),
+        "",
+        "Technical Summary",
+        documented(incident.technicalSummary),
+        "",
+        "Business Impact",
+        documented(incident.businessImpact),
+        "",
+        "Affected Assets",
+        incidentAssets.length ? incidentAssets.map((item) => `- ${item.id}: ${item.hostname} (${item.type}, ${item.status})`).join("\n") : "Not documented",
+        "",
+        "Related Entities",
+        incidentEntities.length ? incidentEntities.map((item) => `- ${item.id}: ${item.name} (${item.type}, ${item.role})`).join("\n") : "Not documented",
+        "",
+        "Key Indicators",
+        incidentIndicators.length ? incidentIndicators.map((item) => `- ${item.id}: ${item.type} ${item.value} (${item.confidence}, ${item.status})`).join("\n") : "Not documented",
+        "",
+        "Evidence / Artifacts Summary",
+        incidentArtifacts.length ? incidentArtifacts.map((item) => `- ${item.id}: ${item.type} from ${item.source} - ${item.description}`).join("\n") : "Not documented",
+        "",
+        "Timeline of Events",
+        incidentTimeline.length ? incidentTimeline.map((item) => `- ${item.timestamp}: ${item.type} - ${item.description}`).join("\n") : "Not documented",
+        "",
+        "Response Actions",
+        incidentActions.length ? incidentActions.map((item) => `- ${item.id}: ${item.title} (${item.status}, owner: ${item.owner})`).join("\n") : "Not documented",
+        "",
+        "Suspected Root Cause",
+        documented(incident.suspectedRootCause),
+        "",
+        "Lessons Learned",
+        documented(incident.lessonsLearned),
+        "",
+        "Recommendations",
+        documented(incident.recommendations || "No recommendations documented."),
+        "",
+        "MITRE ATT&CK Mapping",
+        incidentMappings.length ? incidentMappings.map((item) => `- ${item.tactic}; ${item.technique}; confidence: ${item.confidence}; status: ${item.status}; evidence: ${item.relatedArtifact}; notes: ${item.notes}`).join("\n") : "No ATT&CK mapping documented.",
+        "",
+        "Appendix: Evidence / Artifact IDs",
+        incidentArtifacts.length ? incidentArtifacts.map((item) => `- ${item.id}`).join("\n") : "Not documented"
+      ];
+
+      return lines.join("\n");
+    }
+
+    function renderReports() {
+      document.getElementById("reports").innerHTML = `
+        ${sectionHeader("Reports", "Basic report preview generated only from documented fictional sample data.")}
+        <div class="card report-tools">
+          <label for="incidentReportSelect">Incident</label>
+          <select id="incidentReportSelect">
+            ${incidents.map((incident) => `<option value="${escapeHtml(incident.id)}">${escapeHtml(incident.id)} - ${escapeHtml(incident.title)}</option>`).join("")}
+          </select>
+          <button type="button" id="refreshReport">Refresh Preview</button>
+        </div>
+        <div class="report-preview" id="reportPreview"></div>
+      `;
+
+      const select = document.getElementById("incidentReportSelect");
+      const preview = document.getElementById("reportPreview");
+      const refresh = document.getElementById("refreshReport");
+
+      function updateReport() {
+        preview.textContent = buildReport(select.value);
+      }
+
+      select.addEventListener("change", updateReport);
+      refresh.addEventListener("click", updateReport);
+      updateReport();
+    }
+
+    function renderNav() {
+      nav.innerHTML = sections.map(([id, label], index) => `
+        <button class="nav-button ${index === 0 ? "active" : ""}" type="button" data-section="${id}">${label}</button>
+      `).join("");
+
+      nav.addEventListener("click", (event) => {
+        const button = event.target.closest(".nav-button");
+        if (!button) return;
+
+        document.querySelectorAll(".nav-button").forEach((item) => item.classList.remove("active"));
+        document.querySelectorAll(".section").forEach((item) => item.classList.remove("active"));
+        button.classList.add("active");
+        document.getElementById(button.dataset.section).classList.add("active");
+      });
+    }
+
+    function renderViewer() {
+      viewerSelect.innerHTML = users.map((user) => `<option>${escapeHtml(user.name)} - ${escapeHtml(user.role)}</option>`).join("");
+      viewerSelect.addEventListener("change", () => {
+        auditLog.unshift({
+          id: `AUD-${String(auditLog.length + 1).padStart(3, "0")}`,
+          timestamp: "Demo session",
+          user: viewerSelect.value.split(" - ")[0],
+          role: viewerSelect.value.split(" - ")[1],
+          action: "User/role switched in demo mode",
+          object: "Prototype view",
+          source: "System"
+        });
+        renderAudit();
+      });
+    }
+
+    function renderAll() {
+      renderNav();
+      renderViewer();
+      renderDashboard();
+      renderIncidents();
+      renderArtifacts();
+      renderIndicators();
+      renderAssets();
+      renderEntities();
+      renderTimeline();
+      renderActions();
+      renderAttack();
+      renderReports();
+      renderConnectors();
+      renderUsers();
+      renderAudit();
+    }
+
+    renderAll();
+  </script>
+</body>
+</html>
